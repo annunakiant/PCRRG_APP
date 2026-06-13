@@ -1,0 +1,85 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<div class='d-flex justify-content-between align-items-center mb-3'>
+  <h1 class='h4'>{{ job.job_number }} â€” {{ job.title }}</h1>
+</div>
+
+<div class='row'>
+  <div class='col-md-8'>
+
+    <div class='card mb-3'>
+      <div class='card-body'>
+        <h5>{{ job.client_name }}</h5>
+        <p>{{ job.address }}</p>
+        <p><strong>Service:</strong> {{ job.service_type }}</p>
+        <p><strong>Status:</strong> {{ job.status }}</p>
+      </div>
+    </div>
+
+    <div class='card mb-3'>
+      <div class='card-header'>Photos</div>
+      <div class='card-body'>
+        {% if photos %}
+          <div class='row g-2'>
+            {% for p in photos %}
+              <div class='col-6 col-md-4'>
+                <img src='{{ url_for('static', filename='uploads/' ~ p.filename) }}' class='img-fluid rounded'>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class='text-muted'>No photos uploaded.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class='card mb-3'>
+      <div class='card-header'>Packout</div>
+      <div class='card-body'>
+        {% if packout_items %}
+          <ul class='list-group mb-3'>
+            {% for item in packout_items %}
+              <li class='list-group-item d-flex justify-content-between'>
+                <span>{{ item.name }} ({{ item.quantity }}) â€” {{ item.location }}</span>
+                <small class='text-muted'>{{ item.notes }}</small>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class='text-muted'>No packout items.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class='card mb-3'>
+      <div class='card-header'>Contracts</div>
+      <div class='card-body'>
+        {% if contracts %}
+          <ul class='list-group mb-3'>
+            {% for c in contracts %}
+              <li class='list-group-item'>
+                Template #{{ c.template_id }} â€” {% if c.signed %}Signed{% else %}Pending{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class='text-muted'>No contracts attached.</p>
+        {% endif %}
+        {% if is_admin %}
+          <form method='post' action='{{ url_for('attach_contract', job_id=job.id) }}'>
+            <div class='mb-2'>
+              <select class='form-select' name='template_id'>
+                {% for t in templates %}
+                  <option value='{{ t.id }}'>{{ t.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button class='btn btn-sm btn-outline-secondary' type='submit'>Attach Contract</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

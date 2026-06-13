@@ -1,0 +1,12 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h1 class='h4 mb-3'>New Job</h1>
+<form method='post'>
+  <div class='mb-3'><label class='form-label'>Job Number</label><input class='form-control' name='job_number'></div>
+  <div class='mb-3'><label class='form-label'>Title</label><input class='form-control' name='title'></div>
+  <div class='mb-3'><label class='form-label'>Client Name</label><input class='form-control' name='client_name'></div>
+  <div class='mb-3'><label class='form-label'>Address</label><input class='form-control' name='address'></div>
+  <div class='mb-3'><label class='form-label'>Service Type</label><input class='form-control' name='service_type'></div>
+  <button class='btn btn-primary' type='submit'>Create</button>
+</form>
+{% endblock %}

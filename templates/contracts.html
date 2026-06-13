@@ -1,0 +1,20 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h1 class='h4 mb-3'>Contract Templates</h1>
+
+<form method='post' enctype='multipart/form-data' class='mb-3'>
+  <div class='mb-2'><label class='form-label'>Name</label><input class='form-control' name='name'></div>
+  <div class='mb-2'><label class='form-label'>File</label><input type='file' class='form-control' name='contract_file'></div>
+  <button class='btn btn-primary' type='submit'>Upload Template</button>
+</form>
+
+{% if templates %}
+  <ul class='list-group'>
+    {% for t in templates %}
+      <li class='list-group-item'>{{ t.name }} ({{ t.filename }})</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class='text-muted'>No templates yet.</p>
+{% endif %}
+{% endblock %}
