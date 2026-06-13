@@ -2,5 +2,5 @@
   console.log('Service worker installed');
 });
 self.addEventListener('fetch', event => {
-  // default network behavior
+  // basic passthrough; can be extended for offline caching
 });
