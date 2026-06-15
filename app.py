@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from datetime import datetime
 from flask import (
     Flask, render_template, redirect, url_for,
@@ -13,24 +14,43 @@ from flask_login import (
 import smtplib
 from email.message import EmailMessage
 
+# -----------------------------------------------------------------------------
+# BASE CONFIG + LOGGING
+# -----------------------------------------------------------------------------
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'data', 'pcrrg_fieldops.db')
+
+# SQLite DB in /data
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(
+    BASE_DIR, 'data', 'pcrrg_fieldops.db'
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Upload folders
 app.config['UPLOAD_FOLDER_PHOTOS'] = os.path.join(BASE_DIR, 'static', 'uploads')
 app.config['UPLOAD_FOLDER_CONTRACTS'] = os.path.join(BASE_DIR, 'static', 'contracts')
 app.config['UPLOAD_FOLDER_PACKOUT'] = os.path.join(BASE_DIR, 'static', 'packouts')
 app.config['ARCHIVE_FOLDER'] = os.path.join(BASE_DIR, 'data', 'archive')
+
+# Basic logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+logger.info("Starting PCRRG SUPER-MEGA app.py")
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 
+# -----------------------------------------------------------------------------
 # MODELS
+# -----------------------------------------------------------------------------
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -134,6 +154,9 @@ class CustomFieldValue(db.Model):
     job = db.relationship('Job', backref='custom_values')
 
 
+# -----------------------------------------------------------------------------
+# LOGIN
+# -----------------------------------------------------------------------------
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -148,7 +171,9 @@ def inject_globals():
     return {'is_admin': is_admin(), 'current_user': current_user}
 
 
+# -----------------------------------------------------------------------------
 # EMAIL
+# -----------------------------------------------------------------------------
 def send_job_email(job, to_email, subject, body):
     smtp_host = os.environ.get('SMTP_HOST')
     smtp_port = int(os.environ.get('SMTP_PORT', '587'))
@@ -157,7 +182,7 @@ def send_job_email(job, to_email, subject, body):
     from_email = os.environ.get('FROM_EMAIL', smtp_user)
 
     if not (smtp_host and smtp_user and smtp_pass and from_email):
-        print('Email not configured; skipping send.')
+        logger.warning('Email not configured; skipping send.')
         return
 
     msg = EmailMessage()
@@ -166,13 +191,19 @@ def send_job_email(job, to_email, subject, body):
     msg['To'] = to_email
     msg.set_content(body)
 
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_pass)
-        server.send_message(msg)
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+        logger.info(f"Email sent to {to_email} for job {job.job_number}")
+    except Exception as e:
+        logger.error(f"Error sending email: {e}")
 
 
+# -----------------------------------------------------------------------------
 # DASHBOARD + TIMELINE
+# -----------------------------------------------------------------------------
 @app.route('/')
 @login_required
 def dashboard():
@@ -235,7 +266,9 @@ def job_timeline(job_id):
     return render_template('timeline.html', job=job, events=events)
 
 
+# -----------------------------------------------------------------------------
 # JOB VIEW + MAP DATA
+# -----------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>')
 @login_required
 def view_job(job_id):
@@ -296,7 +329,9 @@ def job_map_data(job_id):
     })
 
 
+# -----------------------------------------------------------------------------
 # JOB CRUD
+# -----------------------------------------------------------------------------
 @app.route('/jobs/new', methods=['GET', 'POST'])
 @login_required
 def new_job():
@@ -361,7 +396,9 @@ def delete_job(job_id):
     return redirect(url_for('dashboard'))
 
 
+# -----------------------------------------------------------------------------
 # PHOTO UPLOAD (GPS)
+# -----------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/upload_photo', methods=['POST'])
 @login_required
 def upload_photo(job_id):
@@ -396,7 +433,9 @@ def upload_photo(job_id):
     return redirect(url_for('view_job', job_id=job.id))
 
 
+# -----------------------------------------------------------------------------
 # PACKOUT
+# -----------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/packout/add', methods=['POST'])
 @login_required
 def add_packout_item(job_id):
@@ -430,7 +469,9 @@ def delete_packout_item(job_id, item_id):
     return redirect(url_for('view_job', job_id=job_id))
 
 
+# -----------------------------------------------------------------------------
 # INVENTORY + BARCODE
+# -----------------------------------------------------------------------------
 @app.route('/inventory')
 @login_required
 def inventory_list():
@@ -499,7 +540,9 @@ def inventory_delete(item_id):
     return redirect(url_for('inventory_list'))
 
 
+# -----------------------------------------------------------------------------
 # CONTRACTS + SIGNATURE (GPS)
+# -----------------------------------------------------------------------------
 @app.route('/contracts/templates', methods=['GET', 'POST'])
 @login_required
 def manage_contracts():
@@ -563,7 +606,9 @@ def sign_contract(job_id, contract_id):
     return render_template('sign_contract.html', job=job, contract=jc)
 
 
+# -----------------------------------------------------------------------------
 # SHARE + ARCHIVE
+# -----------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/share', methods=['POST'])
 @login_required
 def share_job(job_id):
@@ -669,7 +714,9 @@ def archive_job(job_id):
     return redirect(url_for('dashboard'))
 
 
+# -----------------------------------------------------------------------------
 # ADMIN CONTROL CENTER
+# -----------------------------------------------------------------------------
 @app.route('/admin')
 @login_required
 def admin_home():
@@ -802,15 +849,24 @@ def save_custom_fields(job_id):
     return redirect(url_for('view_job', job_id=job.id))
 
 
+# -----------------------------------------------------------------------------
 # AUTH
+# -----------------------------------------------------------------------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         pin = request.form.get('pin')
-        user = User.query.filter_by(username=username, pin=pin).first()
+        try:
+            user = User.query.filter_by(username=username, pin=pin).first()
+        except Exception as e:
+            logger.error(f"Login DB error: {e}")
+            flash('Database error during login.')
+            return redirect(url_for('login'))
+
         if user:
             login_user(user)
+            logger.info(f"User {username} logged in.")
             return redirect(url_for('dashboard'))
         flash('Invalid username or PIN.')
     return render_template('login.html')
@@ -848,42 +904,54 @@ def register():
 @app.route('/logout')
 @login_required
 def logout():
+    logger.info(f"User {current_user.username} logged out.")
     logout_user()
     return redirect(url_for('login'))
 
 
+# -----------------------------------------------------------------------------
 # PWA / SERVICE WORKER
+# -----------------------------------------------------------------------------
 @app.route('/service-worker.js')
 def service_worker():
     return app.send_static_file('service-worker.js')
 
-def init_db():
-    db.create_all()
 
-    # Ensure default admin exists
-    if not User.query.filter_by(username='admin').first():
-        admin = User(
-            username='admin',
-            pin='1234',
-            name='Admin',
-            role='admin'
-        )
-        db.session.add(admin)
-        db.session.commit()
+# -----------------------------------------------------------------------------
+# SUPER-MEGA FLASK 3.x SAFE DB INITIALIZER (Render + local)
+# -----------------------------------------------------------------------------
+def supermega_bootstrap():
+    logger.info("Running SUPER-MEGA DB bootstrap...")
 
+    # Ensure data + archive + upload folders exist
+    os.makedirs(os.path.join(BASE_DIR, 'data'), exist_ok=True)
+    os.makedirs(app.config['ARCHIVE_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['UPLOAD_FOLDER_PHOTOS'], exist_ok=True)
+    os.makedirs(app.config['UPLOAD_FOLDER_CONTRACTS'], exist_ok=True)
+    os.makedirs(app.config['UPLOAD_FOLDER_PACKOUT'], exist_ok=True)
 
-@app.before_first_request
-def bootstrap_db():
-    import os
-
-    # Ensure data folder exists
-    db_folder = os.path.join(BASE_DIR, 'data')
-    os.makedirs(db_folder, exist_ok=True)
-
-    # Ensure DB file exists
-    db_path = os.path.join(db_folder, 'pcrrg_fieldops.db')
+    db_path = os.path.join(BASE_DIR, 'data', 'pcrrg_fieldops.db')
     if not os.path.exists(db_path):
         open(db_path, 'a').close()
+        logger.info(f"Created new DB file at {db_path}")
 
-    # Create tables + admin inside app context
-    init_db()
+    with app.app_context():
+        db.create_all()
+        logger.info("DB tables created/verified.")
+
+        if not User.query.filter_by(username='admin').first():
+            admin = User(
+                username='admin',
+                pin='1234',
+                name='Admin',
+                role='admin'
+            )
+            db.session.add(admin)
+            db.session.commit()
+            logger.info("Default admin user created (admin / 1234).")
+        else:
+            logger.info("Admin user already exists.")
+
+
+supermega_bootstrap()
+logger.info("SUPER-MEGA app bootstrap complete.")
