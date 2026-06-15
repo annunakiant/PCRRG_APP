@@ -1,1 +1,149 @@
-﻿PASTE VIEW_JOB.HTML CONTENT HERE
+﻿{% extends "base.html" %}
+{% block title %}Job {{ job.job_number }}{% endblock %}
+{% block subtitle %}{{ job.title }} · {{ job.client_name }}{% endblock %}
+{% block content %}
+<div class="grid">
+  <div class="card">
+    <div class="card-title">Job Details</div>
+    <div class="card-sub">{{ job.address }} · {{ job.service_type }}</div>
+    <div style="font-size:0.85rem;">
+      Status: <strong>{{ job.status }}</strong><br>
+      Created: {{ job.created_at.strftime('%Y-%m-%d %H:%M') if job.created_at }}
+    </div>
+    {% if is_admin %}
+    <div style="margin-top:0.75rem;">
+      <a href="{{ url_for('edit_job', job_id=job.id) }}" class="btn btn-outline">Edit Job</a>
+      <form method="post" action="{{ url_for('archive_job', job_id=job.id) }}" style="display:inline;">
+        <button class="btn btn-outline" type="submit">Archive</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title">Share & Contracts</div>
+    <form method="post" action="{{ url_for('share_job', job_id=job.id) }}" style="margin-bottom:0.75rem;">
+      <div class="card-sub">Email job report</div>
+      <input name="email" placeholder="client@example.com" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;">
+      <button class="btn btn-primary" type="submit" style="margin-top:0.5rem;">Send Report</button>
+    </form>
+    <div class="card-sub">Contracts</div>
+    <form method="post" action="{{ url_for('attach_contract', job_id=job.id) }}">
+      <select name="template_id" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;">
+        {% for t in templates %}
+        <option value="{{ t.id }}">{{ t.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-outline" type="submit" style="margin-top:0.5rem;">Attach Contract</button>
+    </form>
+    <ul style="list-style:none;padding:0;margin-top:0.75rem;font-size:0.85rem;">
+      {% for c in contracts %}
+      <li>
+        Contract #{{ c.id }} – {% if c.signed %}Signed{% else %}Pending{% endif %}
+        <a href="{{ url_for('sign_contract', job_id=job.id, contract_id=c.id) }}" style="margin-left:0.5rem;">Sign / View</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+<div class="grid" style="margin-top:1.5rem;">
+  <div class="card">
+    <div class="card-title">Timeline</div>
+    <div class="card-sub">CompanyCam-style feed</div>
+    <a href="{{ url_for('job_timeline', job_id=job.id) }}" class="btn btn-outline">Open Timeline</a>
+  </div>
+  <div class="card">
+    <div class="card-title">Map View</div>
+    <div class="card-sub">Photos + contracts GPS</div>
+    <div id="job-map" style="height:260px;border-radius:0.75rem;overflow:hidden;"></div>
+  </div>
+</div>
+<div class="grid" style="margin-top:1.5rem;">
+  <div class="card">
+    <div class="card-title">Photos</div>
+    <form method="post" action="{{ url_for('upload_photo', job_id=job.id) }}" enctype="multipart/form-data" style="margin-bottom:0.75rem;">
+      <input type="file" name="photo" required style="margin-bottom:0.5rem;">
+      <input type="text" name="category" placeholder="Category (e.g. 'Before', 'After')" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+      <input type="hidden" name="lat" id="photo-lat">
+      <input type="hidden" name="lon" id="photo-lon">
+      <button class="btn btn-primary" type="submit">Upload Photo</button>
+    </form>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+      {% for p in photos %}
+      <div style="width:120px;height:120px;border-radius:0.75rem;overflow:hidden;background:#020617;font-size:0.75rem;">
+        <img src="{{ url_for('static', filename='uploads/' ~ p.filename) }}" alt="" style="width:100%;height:80px;object-fit:cover;">
+        <div style="padding:0.25rem;">{{ p.category or 'Photo' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Packout</div>
+    <form method="post" action="{{ url_for('add_packout_item', job_id=job.id) }}" style="margin-bottom:0.75rem;font-size:0.85rem;">
+      <input name="name" placeholder="Item name" required style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <input name="quantity" placeholder="Qty" type="number" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <input name="location" placeholder="Location" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <input name="notes" placeholder="Notes" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <button class="btn btn-outline" type="submit">Add Packout Item</button>
+    </form>
+    <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+      {% for i in packout_items %}
+      <li style="margin-bottom:0.4rem;">
+        {{ i.name }} x{{ i.quantity }} @ {{ i.location }} ({{ i.notes }})
+        {% if is_admin %}
+        <form method="post" action="{{ url_for('delete_packout_item', job_id=job.id, item_id=i.id) }}" style="display:inline;">
+          <button type="submit" class="btn btn-outline" style="padding:0.1rem 0.4rem;font-size:0.7rem;">Delete</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+<div class="card" style="margin-top:1.5rem;">
+  <div class="card-title">Tasks</div>
+  <div class="card-sub">Job checklist</div>
+  <form method="post" action="{{ url_for('add_job_task', job_id=job.id) }}" style="margin-bottom:0.75rem;">
+    <select name="template_id" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <option value="">Custom task</option>
+      {% for t in task_templates %}
+      <option value="{{ t.id }}">{{ t.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="label" placeholder="Task label (optional)" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+    <button class="btn btn-outline" type="submit">Add Task</button>
+  </form>
+  <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+    {% for t in tasks %}
+    <li style="margin-bottom:0.4rem;">
+      <form method="post" action="{{ url_for('toggle_job_task', job_id=job.id, task_id=t.id) }}" style="display:inline;">
+        <button type="submit" class="btn btn-outline" style="padding:0.1rem 0.4rem;font-size:0.7rem;">
+          {% if t.completed %}✓{% else %}○{% endif %}
+        </button>
+      </form>
+      {{ t.label }}
+      {% if t.completed %}
+        <span style="color:#22c55e;font-size:0.75rem;">Completed</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+<script>
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var lat=document.getElementById('photo-lat');var lon=document.getElementById('photo-lon');
+      if(lat&&lon){lat.value=pos.coords.latitude;lon.value=pos.coords.longitude;}
+    });
+  }
+  fetch("{{ url_for('job_map_data', job_id=job.id) }}")
+    .then(r=>r.json())
+    .then(data=>{
+      var map=L.map('job-map');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+      var markers=[];
+      data.photos.forEach(function(p){var m=L.marker([p.lat,p.lon]).addTo(map).bindPopup(p.label);markers.push(m);});
+      data.contracts.forEach(function(c){var m=L.marker([c.lat,c.lon]).addTo(map).bindPopup(c.label);markers.push(m);});
+      if(markers.length>0){var g=L.featureGroup(markers);map.fitBounds(g.getBounds().pad(0.2));}else{map.setView([0,0],2);}
+    });
+</script>
+{% endblock %}

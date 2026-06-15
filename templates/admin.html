@@ -1,1 +1,63 @@
-﻿PASTE ADMIN.HTML CONTENT HERE
+﻿{% extends "base.html" %}
+{% block title %}Admin Control Center{% endblock %}
+{% block subtitle %}Themes, tabs, tasks, tracking{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  <div class="card">
+    <div class="card-title">Theme</div>
+    <div class="card-sub">Colors + logo</div>
+    <form method="post" action="{{ url_for('admin_theme_update') }}" style="font-size:0.85rem;">
+      <label>Primary color</label>
+      <input name="primary_color" value="{{ theme.primary_color }}" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <label>Secondary color</label>
+      <input name="secondary_color" value="{{ theme.secondary_color }}" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <label>Logo URL</label>
+      <input name="logo_url" value="{{ theme.logo_url }}" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <button class="btn btn-primary" type="submit">Save Theme</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="card-title">Custom Tabs</div>
+    <div class="card-sub">CompanyCam-style sections</div>
+    <a href="{{ url_for('admin_tabs') }}" class="btn btn-outline">Manage Tabs</a>
+  </div>
+  <div class="card">
+    <div class="card-title">Task Templates</div>
+    <div class="card-sub">Job checklists</div>
+    <a href="{{ url_for('admin_task_templates') }}" class="btn btn-outline">Manage Task Templates</a>
+  </div>
+</div>
+<div class="grid" style="margin-top:1.5rem;">
+  <div class="card">
+    <div class="card-title">Recent Jobs</div>
+    <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+      {% for j in jobs %}
+      <li style="margin-bottom:0.4rem;">
+        <a href="{{ url_for('view_job', job_id=j.id) }}">{{ j.job_number }} – {{ j.title }}</a>
+        <span style="color:#9ca3af;font-size:0.75rem;">({{ j.status }})</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Inventory Snapshot</div>
+    <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+      {% for i in inventory_items %}
+      <li style="margin-bottom:0.4rem;">
+        {{ i.name }} ({{ i.quantity }}) – {{ i.location }}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Active Sessions</div>
+    <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+      {% for s in active_sessions %}
+      <li style="margin-bottom:0.4rem;">
+        {{ s.user.name or s.user.username }} · {{ s.clock_in_at.strftime('%H:%M') if s.clock_in_at }}{% if s.job %} · Job {{ s.job.job_number }}{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

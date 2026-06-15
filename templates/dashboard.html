@@ -1,1 +1,68 @@
-﻿PASTE DASHBOARD.HTML CONTENT HERE
+﻿{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block subtitle %}Live jobs, sessions, and contracts overview{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  <div class="card">
+    <div class="card-title">Jobs</div>
+    <div class="card-sub">Open / Closed / Archived</div>
+    <div class="stat-number">{{ jobs_open }}</div>
+    <div class="stat-label">Open</div>
+    <div style="margin-top:0.25rem;font-size:0.8rem;color:#9ca3af;">
+      Closed: {{ jobs_closed }} · Archived: {{ jobs_archived }}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Inventory</div>
+    <div class="card-sub">Tracked items</div>
+    <div class="stat-number">{{ inventory_count }}</div>
+    <div class="stat-label">Items</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Contracts</div>
+    <div class="card-sub">Pending signatures</div>
+    <div class="stat-number">{{ contracts_pending }}</div>
+    <div class="stat-label">Pending</div>
+  </div>
+</div>
+<div class="grid" style="margin-top:1.5rem;">
+  <div class="card">
+    <div class="card-title">Recent Jobs</div>
+    <div class="card-sub">CompanyCam-style timeline ready</div>
+    <table style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+      <thead>
+        <tr style="text-align:left;color:#9ca3af;">
+          <th>Job</th><th>Client</th><th>Status</th><th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in recent_jobs %}
+        <tr>
+          <td><a href="{{ url_for('view_job', job_id=job.id) }}">{{ job.job_number }} – {{ job.title }}</a></td>
+          <td>{{ job.client_name }}</td>
+          <td>{{ job.status }}</td>
+          <td>{{ job.created_at.strftime('%Y-%m-%d') if job.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">Active Sessions</div>
+    <div class="card-sub">Who is currently clocked in</div>
+    {% if active_sessions %}
+      <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+        {% for s in active_sessions %}
+        <li style="margin-bottom:0.4rem;">
+          <strong>{{ s.user.name or s.user.username }}</strong>
+          · {{ s.clock_in_at.strftime('%H:%M') if s.clock_in_at }}
+          {% if s.job %}· Job {{ s.job.job_number }}{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div style="font-size:0.8rem;color:#9ca3af;">No one is currently clocked in.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
