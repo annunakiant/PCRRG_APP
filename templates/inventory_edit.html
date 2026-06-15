@@ -1,0 +1,13 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h1 class='h4 mb-3'>{{ 'New' if not item else 'Edit' }} Inventory Item</h1>
+<form method='post'>
+  <div class='mb-3'><label class='form-label'>Name</label><input class='form-control' name='name' value='{{ item.name if item else "" }}'></div>
+  <div class='mb-3'><label class='form-label'>SKU</label><input class='form-control' name='sku' value='{{ item.sku if item else "" }}'></div>
+  <div class='mb-3'><label class='form-label'>Barcode</label><input class='form-control' name='barcode' value='{{ item.barcode if item else "" }}'></div>
+  <div class='mb-3'><label class='form-label'>Quantity</label><input class='form-control' name='quantity' value='{{ item.quantity if item else 0 }}'></div>
+  <div class='mb-3'><label class='form-label'>Location</label><input class='form-control' name='location' value='{{ item.location if item else "" }}'></div>
+  <div class='mb-3'><label class='form-label'>Notes</label><input class='form-control' name='notes' value='{{ item.notes if item else "" }}'></div>
+  <button class='btn btn-primary' type='submit'>Save</button>
+</form>
+{% endblock %}

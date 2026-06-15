@@ -1,0 +1,40 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h1 class='h4 mb-3'>Custom Tabs</h1>
+
+<form method='post' class='mb-3'>
+  <div class='row g-2'>
+    <div class='col-md-6'>
+      <input class='form-control' name='name' placeholder='Tab name'>
+    </div>
+    <div class='col-md-2'>
+      <input class='form-control' name='order' placeholder='Order' value='0'>
+    </div>
+    <div class='col-md-4'>
+      <button class='btn btn-primary w-100' type='submit'>Add Tab</button>
+    </div>
+  </div>
+</form>
+
+{% if tabs %}
+  <table class='table table-sm'>
+    <thead><tr><th>Name</th><th>Order</th><th>Fields</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for tab in tabs %}
+        <tr>
+          <td>{{ tab.name }}</td>
+          <td>{{ tab.order }}</td>
+          <td><a href='{{ url_for('admin_fields', tab_id=tab.id) }}' class='btn btn-sm btn-outline-secondary'>Fields</a></td>
+          <td>
+            <form method='post' action='{{ url_for('admin_tab_delete', tab_id=tab.id) }}'>
+              <button class='btn btn-sm btn-outline-danger' type='submit'>Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class='text-muted'>No tabs yet.</p>
+{% endif %}
+{% endblock %}

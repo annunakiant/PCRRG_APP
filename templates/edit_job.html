@@ -1,0 +1,20 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h1 class='h4 mb-3'>Edit Job {{ job.job_number }}</h1>
+<form method='post'>
+  <div class='mb-3'><label class='form-label'>Job Number</label><input class='form-control' name='job_number' value='{{ job.job_number }}'></div>
+  <div class='mb-3'><label class='form-label'>Title</label><input class='form-control' name='title' value='{{ job.title }}'></div>
+  <div class='mb-3'><label class='form-label'>Client Name</label><input class='form-control' name='client_name' value='{{ job.client_name }}'></div>
+  <div class='mb-3'><label class='form-label'>Address</label><input class='form-control' name='address' value='{{ job.address }}'></div>
+  <div class='mb-3'><label class='form-label'>Service Type</label><input class='form-control' name='service_type' value='{{ job.service_type }}'></div>
+  <div class='mb-3'>
+    <label class='form-label'>Status</label>
+    <select class='form-select' name='status'>
+      <option value='open' {% if job.status == 'open' %}selected{% endif %}>Open</option>
+      <option value='closed' {% if job.status == 'closed' %}selected{% endif %}>Closed</option>
+      <option value='archived' {% if job.status == 'archived' %}selected{% endif %}>Archived</option>
+    </select>
+  </div>
+  <button class='btn btn-primary' type='submit'>Save</button>
+</form>
+{% endblock %}

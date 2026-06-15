@@ -1,0 +1,53 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h1 class='h4 mb-3'>Fields for {{ tab.name }}</h1>
+
+<form method='post' class='mb-3'>
+  <div class='row g-2'>
+    <div class='col-md-4'>
+      <input class='form-control' name='label' placeholder='Field label'>
+    </div>
+    <div class='col-md-3'>
+      <select class='form-select' name='field_type'>
+        <option value='text'>Text</option>
+        <option value='number'>Number</option>
+        <option value='checkbox'>Checkbox</option>
+        <option value='dropdown'>Dropdown</option>
+      </select>
+    </div>
+    <div class='col-md-2'>
+      <div class='form-check mt-2'>
+        <input class='form-check-input' type='checkbox' name='required' id='required'>
+        <label class='form-check-label' for='required'>Required</label>
+      </div>
+    </div>
+    <div class='col-md-3'>
+      <input class='form-control' name='options' placeholder='Options (comma-separated for dropdown)'>
+    </div>
+  </div>
+  <button class='btn btn-primary mt-2' type='submit'>Add Field</button>
+</form>
+
+{% if tab.fields %}
+  <table class='table table-sm'>
+    <thead><tr><th>Label</th><th>Type</th><th>Required</th><th>Options</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for field in tab.fields %}
+        <tr>
+          <td>{{ field.label }}</td>
+          <td>{{ field.field_type }}</td>
+          <td>{{ 'Yes' if field.required else 'No' }}</td>
+          <td>{{ field.options }}</td>
+          <td>
+            <form method='post' action='{{ url_for('admin_field_delete', field_id=field.id) }}'>
+              <button class='btn btn-sm btn-outline-danger' type='submit'>Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class='text-muted'>No fields yet.</p>
+{% endif %}
+{% endblock %}

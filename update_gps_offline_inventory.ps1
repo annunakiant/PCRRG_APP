@@ -1,7 +1,86 @@
-﻿{% extends 'base.html' %}
+# update_gps_offline_inventory.ps1
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$root = "C:\PCRRG_FieldOps_Fresh"
+Set-Location $root
+
+Write-Host "Updating app.py for GPS fields..."
+
+# NOTE: this assumes you already have the admin app.py from the previous script.
+# We only patch in GPS columns and minor logic.
+
+$app = Get-Content "app.py" -Raw
+
+# Add GPS columns to Photo and JobContract models if not present
+if ($app -notmatch "latitude = db.Column") {
+    $app = $app -replace "class Photo\(db.Model\):\s*id = db.Column\(db.Integer, primary_key=True\)\s*job_id = db.Column\(db.Integer, db.ForeignKey\('job.id'\), nullable=False\)\s*filename = db.Column\(db.String\(255\), nullable=False\)\s*category = db.Column\(db.String\(100\)\)\s*uploaded_at = db.Column\(db.DateTime, default=datetime.utcnow\)",
+@"
+class Photo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    category = db.Column(db.String(100))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+"@
+}
+
+if ($app -notmatch "JobContract\(db.Model\).*latitude") {
+    $app = $app -replace "class JobContract\(db.Model\):\s*id = db.Column\(db.Integer, primary_key=True\)\s*job_id = db.Column\(db.Integer, db.ForeignKey\('job.id'\), nullable=False\)\s*template_id = db.Column\(db.Integer, db.ForeignKey\('contract_template.id'\)\)\s*signed = db.Column\(db.Boolean, default=False\)\s*signed_at = db.Column\(db.DateTime\)\s*signer_name = db.Column\(db.String\(255\)\)\s*signer_email = db.Column\(db.String\(255\)\)",
+@"
+class JobContract(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'))
+    signed = db.Column(db.Boolean, default=False)
+    signed_at = db.Column(db.DateTime)
+    signer_name = db.Column(db.String(255))
+    signer_email = db.Column(db.String(255))
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+"@
+}
+
+# Patch upload_photo route to accept GPS
+if ($app -notmatch "request.form.get\('lat'\)") {
+    $app = $app -replace "photo = Photo\(job_id=job.id, filename=filename, category=request.form.get\('category'\)\)",
+@"
+    lat = request.form.get('lat')
+    lon = request.form.get('lon')
+    photo = Photo(job_id=job.id, filename=filename,
+                  category=request.form.get('category'),
+                  latitude=float(lat) if lat else None,
+                  longitude=float(lon) if lon else None)
+"@
+}
+
+# Patch sign_contract route to accept GPS
+if ($app -notmatch "signer_lat") {
+    $app = $app -replace "jc.signed = True\s*jc.signed_at = datetime.utcnow\(\)\s*jc.signer_name = signer_name\s*jc.signer_email = signer_email",
+@"
+        signer_lat = request.form.get('lat')
+        signer_lon = request.form.get('lon')
+        jc.signed = True
+        jc.signed_at = datetime.utcnow()
+        jc.signer_name = signer_name
+        jc.signer_email = signer_email
+        jc.latitude = float(signer_lat) if signer_lat else None
+        jc.longitude = float(signer_lon) if signer_lon else None
+"@
+}
+
+Set-Content -Encoding UTF8 "app.py" $app
+Write-Host "app.py GPS patch complete."
+
+Write-Host "Updating view_job.html for GPS + barcode + offline-friendly UI..."
+
+@"
+{% extends 'base.html' %}
 {% block content %}
 <div class='d-flex justify-content-between align-items-center mb-3'>
-  <h1 class='h4'>{{ job.job_number }} â€” {{ job.title }}</h1>
+  <h1 class='h4'>{{ job.job_number }} — {{ job.title }}</h1>
   <div>
     <a href='{{ url_for('dashboard') }}' class='btn btn-sm btn-outline-secondary'>Back</a>
     {% if is_admin %}
@@ -66,7 +145,7 @@
           <ul class='list-group mb-3'>
             {% for item in packout_items %}
               <li class='list-group-item d-flex justify-content-between'>
-                <span>{{ item.name }} ({{ item.quantity }}) â€” {{ item.location }}</span>
+                <span>{{ item.name }} ({{ item.quantity }}) — {{ item.location }}</span>
                 <small class='text-muted'>{{ item.notes }}</small>
                 {% if is_admin %}
                   <form method='post' action='{{ url_for('delete_packout_item', job_id=job.id, item_id=item.id) }}'>
@@ -101,7 +180,7 @@
           <ul class='list-group mb-3'>
             {% for c in contracts %}
               <li class='list-group-item d-flex justify-content-between align-items-center'>
-                <span>Template #{{ c.template_id }} â€” {% if c.signed %}Signed{% else %}Pending{% endif %}</span>
+                <span>Template #{{ c.template_id }} — {% if c.signed %}Signed{% else %}Pending{% endif %}</span>
                 <div class='text-end'>
                   {% if c.latitude and c.longitude %}
                     <small class='text-muted d-block'>Lat: {{ '%.5f'|format(c.latitude) }}, Lon: {{ '%.5f'|format(c.longitude) }}</small>
@@ -192,3 +271,45 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+"@ | Set-Content -Encoding UTF8 "templates\view_job.html"
+
+Write-Host "Writing basic service worker and manifest for offline/PWA..."
+
+# service-worker.js
+@"
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open('pcrrg-shell-v1').then(cache => {
+      return cache.addAll([
+        '/',
+        '/login',
+        '/static/manifest.json',
+        'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css'
+      ]);
+    })
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(resp => {
+      return resp || fetch(event.request);
+    })
+  );
+});
+"@ | Set-Content -Encoding UTF8 "static\service-worker.js"
+
+# manifest.json
+@"
+{
+  "name": "PCRRG FieldOps",
+  "short_name": "FieldOps",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "icons": []
+}
+"@ | Set-Content -Encoding UTF8 "static\manifest.json"
+
+Write-Host "GPS + offline + inventory upgrade complete."
