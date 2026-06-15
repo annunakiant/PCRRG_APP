@@ -876,6 +876,20 @@ def init_db():
         )
         db.session.add(job)
         db.session.commit()
+        
+@app.before_request
+def ensure_db_folder():
+    import os
+    db_folder = os.path.join(BASE_DIR, 'data')
+    db_path = os.path.join(db_folder, 'pcrrg_fieldops.db')
+
+    # Ensure /data folder exists
+    if not os.path.exists(db_folder):
+        os.makedirs(db_folder, exist_ok=True)
+
+    # Ensure DB file exists (create empty file if missing)
+    if not os.path.exists(db_path):
+        open(db_path, 'a').close()
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER_PHOTOS'], exist_ok=True)
