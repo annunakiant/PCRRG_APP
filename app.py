@@ -51,6 +51,13 @@ login_manager.login_view = 'login'
 # -----------------------------------------------------------------------------
 # MODELS
 # -----------------------------------------------------------------------------
+class ThemeSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    primary_color = db.Column(db.String(20), default="#1E88E5")
+    secondary_color = db.Column(db.String(20), default="#FFC107")
+    logo_url = db.Column(db.String(255), default="/static/logo.png")
+
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -78,6 +85,7 @@ class Job(db.Model):
     photos = db.relationship('Photo', backref='job', lazy='dynamic')
     packout_items = db.relationship('PackoutItem', backref='job', lazy='dynamic')
     contracts = db.relationship('JobContract', backref='job', lazy='dynamic')
+    custom_values = db.relationship('CustomFieldValue', backref='job', lazy='dynamic')
 
 
 class Photo(db.Model):
@@ -151,11 +159,10 @@ class CustomFieldValue(db.Model):
     value = db.Column(db.String(255))
 
     field = db.relationship('CustomField')
-    job = db.relationship('Job', backref='custom_values')
 
 
 # -----------------------------------------------------------------------------
-# LOGIN
+# LOGIN + GLOBALS
 # -----------------------------------------------------------------------------
 @login_manager.user_loader
 def load_user(user_id):
@@ -168,7 +175,21 @@ def is_admin():
 
 @app.context_processor
 def inject_globals():
-    return {'is_admin': is_admin(), 'current_user': current_user}
+    theme = ThemeSettings.query.first()
+    if not theme:
+        theme = ThemeSettings(
+            primary_color="#1E88E5",
+            secondary_color="#FFC107",
+            logo_url="/static/logo.png"
+        )
+        db.session.add(theme)
+        db.session.commit()
+
+    return {
+        'is_admin': is_admin(),
+        'current_user': current_user,
+        'theme': theme
+    }
 
 
 # -----------------------------------------------------------------------------
@@ -202,22 +223,33 @@ def send_job_email(job, to_email, subject, body):
 
 
 # -----------------------------------------------------------------------------
-# DASHBOARD + TIMELINE
+# DASHBOARD + PANELS
 # -----------------------------------------------------------------------------
 @app.route('/')
 @login_required
 def dashboard():
-    jobs = Job.query.order_by(Job.created_at.desc()).all()
+    jobs_open = Job.query.filter_by(status='open').count()
+    jobs_closed = Job.query.filter_by(status='closed').count()
+    jobs_archived = Job.query.filter_by(status='archived').count()
     inventory_count = InventoryItem.query.count()
     contracts_pending = JobContract.query.filter_by(signed=False).count()
+
+    recent_jobs = Job.query.order_by(Job.created_at.desc()).limit(10).all()
+
     return render_template(
         'dashboard.html',
-        jobs=jobs,
+        jobs_open=jobs_open,
+        jobs_closed=jobs_closed,
+        jobs_archived=jobs_archived,
         inventory_count=inventory_count,
-        contracts_pending=contracts_pending
+        contracts_pending=contracts_pending,
+        recent_jobs=recent_jobs
     )
 
 
+# -----------------------------------------------------------------------------
+# TIMELINE (CompanyCam-style)
+# -----------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/timeline')
 @login_required
 def job_timeline(job_id):
@@ -267,7 +299,7 @@ def job_timeline(job_id):
 
 
 # -----------------------------------------------------------------------------
-# JOB VIEW + MAP DATA
+# JOB VIEW + LEAFLET MAP DATA
 # -----------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>')
 @login_required
@@ -397,7 +429,7 @@ def delete_job(job_id):
 
 
 # -----------------------------------------------------------------------------
-# PHOTO UPLOAD (GPS)
+# PHOTO UPLOAD (GPS + CAMERA)
 # -----------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/upload_photo', methods=['POST'])
 @login_required
@@ -541,7 +573,7 @@ def inventory_delete(item_id):
 
 
 # -----------------------------------------------------------------------------
-# CONTRACTS + SIGNATURE (GPS)
+# CONTRACTS + E-SIGN (GPS)
 # -----------------------------------------------------------------------------
 @app.route('/contracts/templates', methods=['GET', 'POST'])
 @login_required
@@ -715,7 +747,7 @@ def archive_job(job_id):
 
 
 # -----------------------------------------------------------------------------
-# ADMIN CONTROL CENTER
+# ADMIN CONTROL CENTER + THEMES + CUSTOM TABS/FIELDS
 # -----------------------------------------------------------------------------
 @app.route('/admin')
 @login_required
@@ -727,13 +759,36 @@ def admin_home():
     jobs = Job.query.order_by(Job.created_at.desc()).limit(10).all()
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).limit(10).all()
     tabs = CustomTab.query.order_by(CustomTab.order).all()
+    theme = ThemeSettings.query.first()
 
     return render_template(
         'admin.html',
         jobs=jobs,
         inventory_items=inventory_items,
-        tabs=tabs
+        tabs=tabs,
+        theme=theme
     )
+
+
+@app.route('/admin/theme', methods=['POST'])
+@login_required
+def admin_theme_update():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('admin_home'))
+
+    theme = ThemeSettings.query.first()
+    if not theme:
+        theme = ThemeSettings()
+        db.session.add(theme)
+
+    theme.primary_color = request.form.get('primary_color') or theme.primary_color
+    theme.secondary_color = request.form.get('secondary_color') or theme.secondary_color
+    theme.logo_url = request.form.get('logo_url') or theme.logo_url
+
+    db.session.commit()
+    flash('Theme updated.')
+    return redirect(url_for('admin_home'))
 
 
 @app.route('/admin/tabs', methods=['GET', 'POST'])
@@ -923,7 +978,6 @@ def service_worker():
 def supermega_bootstrap():
     logger.info("Running SUPER-MEGA DB bootstrap...")
 
-    # Ensure data + archive + upload folders exist
     os.makedirs(os.path.join(BASE_DIR, 'data'), exist_ok=True)
     os.makedirs(app.config['ARCHIVE_FOLDER'], exist_ok=True)
     os.makedirs(app.config['UPLOAD_FOLDER_PHOTOS'], exist_ok=True)
