@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from flask import (
     Flask, render_template, redirect, url_for,
-    request, flash
+    request, flash, jsonify
 )
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
@@ -50,7 +50,7 @@ class Job(db.Model):
     title = db.Column(db.String(255), nullable=False)
     client_name = db.Column(db.String(255))
     address = db.Column(db.String(255))
-    status = db.Column(db.String(50), default='open')  # open, closed, archived
+    status = db.Column(db.String(50), default='open')
     service_type = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime)
@@ -117,9 +117,9 @@ class CustomField(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tab_id = db.Column(db.Integer, db.ForeignKey('custom_tab.id'), nullable=False)
     label = db.Column(db.String(255), nullable=False)
-    field_type = db.Column(db.String(50), nullable=False)  # text, number, checkbox, dropdown
+    field_type = db.Column(db.String(50), nullable=False)
     required = db.Column(db.Boolean, default=False)
-    options = db.Column(db.String(255))  # for dropdown, comma-separated
+    options = db.Column(db.String(255))
 
     tab = db.relationship('CustomTab', backref='fields')
 
@@ -172,7 +172,7 @@ def send_job_email(job, to_email, subject, body):
         server.send_message(msg)
 
 
-# CORE ROUTES
+# DASHBOARD + TIMELINE
 @app.route('/')
 @login_required
 def dashboard():
@@ -187,6 +187,55 @@ def dashboard():
     )
 
 
+@app.route('/jobs/<int:job_id>/timeline')
+@login_required
+def job_timeline(job_id):
+    job = Job.query.get_or_404(job_id)
+
+    events = []
+
+    for p in job.photos.order_by(Photo.uploaded_at.desc()).all():
+        events.append({
+            'type': 'photo',
+            'timestamp': p.uploaded_at,
+            'label': f'Photo: {p.category or "Uncategorized"}',
+            'meta': {
+                'filename': p.filename,
+                'lat': p.latitude,
+                'lon': p.longitude
+            }
+        })
+
+    for i in job.packout_items.order_by(PackoutItem.id.desc()).all():
+        events.append({
+            'type': 'packout',
+            'timestamp': job.created_at,
+            'label': f'Packout: {i.name} x{i.quantity}',
+            'meta': {
+                'location': i.location,
+                'notes': i.notes
+            }
+        })
+
+    for c in job.contracts.order_by(JobContract.signed_at.desc()).all():
+        events.append({
+            'type': 'contract',
+            'timestamp': c.signed_at or job.created_at,
+            'label': f'Contract: {"Signed" if c.signed else "Pending"}',
+            'meta': {
+                'signer': c.signer_name,
+                'email': c.signer_email,
+                'lat': c.latitude,
+                'lon': c.longitude
+            }
+        })
+
+    events.sort(key=lambda e: e['timestamp'] or job.created_at, reverse=True)
+
+    return render_template('timeline.html', job=job, events=events)
+
+
+# JOB VIEW + MAP DATA
 @app.route('/jobs/<int:job_id>')
 @login_required
 def view_job(job_id):
@@ -197,9 +246,7 @@ def view_job(job_id):
     templates = ContractTemplate.query.all()
     tabs = CustomTab.query.order_by(CustomTab.order).all()
 
-    values_map = {}
-    for v in job.custom_values:
-        values_map[v.field_id] = v.value
+    values_map = {v.field_id: v.value for v in job.custom_values}
 
     return render_template(
         'view_job.html',
@@ -213,6 +260,43 @@ def view_job(job_id):
     )
 
 
+@app.route('/jobs/<int:job_id>/map-data')
+@login_required
+def job_map_data(job_id):
+    job = Job.query.get_or_404(job_id)
+
+    photo_points = []
+    for p in job.photos.all():
+        if p.latitude is not None and p.longitude is not None:
+            photo_points.append({
+                'lat': p.latitude,
+                'lon': p.longitude,
+                'label': f'Photo: {p.category or "Uncategorized"}',
+                'filename': p.filename
+            })
+
+    contract_points = []
+    for c in job.contracts.all():
+        if c.latitude is not None and c.longitude is not None:
+            contract_points.append({
+                'lat': c.latitude,
+                'lon': c.longitude,
+                'label': f'Contract: {"Signed" if c.signed else "Pending"}',
+                'signer': c.signer_name
+            })
+
+    return jsonify({
+        'job': {
+            'id': job.id,
+            'title': job.title,
+            'address': job.address
+        },
+        'photos': photo_points,
+        'contracts': contract_points
+    })
+
+
+# JOB CRUD
 @app.route('/jobs/new', methods=['GET', 'POST'])
 @login_required
 def new_job():
@@ -277,6 +361,7 @@ def delete_job(job_id):
     return redirect(url_for('dashboard'))
 
 
+# PHOTO UPLOAD (GPS)
 @app.route('/jobs/<int:job_id>/upload_photo', methods=['POST'])
 @login_required
 def upload_photo(job_id):
@@ -311,6 +396,7 @@ def upload_photo(job_id):
     return redirect(url_for('view_job', job_id=job.id))
 
 
+# PACKOUT
 @app.route('/jobs/<int:job_id>/packout/add', methods=['POST'])
 @login_required
 def add_packout_item(job_id):
@@ -344,6 +430,7 @@ def delete_packout_item(job_id, item_id):
     return redirect(url_for('view_job', job_id=job_id))
 
 
+# INVENTORY + BARCODE
 @app.route('/inventory')
 @login_required
 def inventory_list():
@@ -412,6 +499,7 @@ def inventory_delete(item_id):
     return redirect(url_for('inventory_list'))
 
 
+# CONTRACTS + SIGNATURE (GPS)
 @app.route('/contracts/templates', methods=['GET', 'POST'])
 @login_required
 def manage_contracts():
@@ -475,6 +563,7 @@ def sign_contract(job_id, contract_id):
     return render_template('sign_contract.html', job=job, contract=jc)
 
 
+# SHARE + ARCHIVE
 @app.route('/jobs/<int:job_id>/share', methods=['POST'])
 @login_required
 def share_job(job_id):
@@ -761,6 +850,12 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+
+# PWA / SERVICE WORKER
+@app.route('/service-worker.js')
+def service_worker():
+    return app.send_static_file('service-worker.js')
 
 
 def init_db():
