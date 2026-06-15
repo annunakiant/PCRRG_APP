@@ -24,8 +24,9 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 
 # SQLite DB in /data
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(
-    BASE_DIR, 'data', 'pcrrg_fieldops.db'
+    BASE_DIR, 'data', 'pcrrg_fieldops_v2.db'
 )
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Upload folders
@@ -1169,7 +1170,8 @@ def supermega_bootstrap():
     os.makedirs(app.config['UPLOAD_FOLDER_CONTRACTS'], exist_ok=True)
     os.makedirs(app.config['UPLOAD_FOLDER_PACKOUT'], exist_ok=True)
 
-    db_path = os.path.join(BASE_DIR, 'data', 'pcrrg_fieldops.db')
+    db_path = os.path.join(BASE_DIR, 'data', 'pcrrg_fieldops_v2.db')
+
     if not os.path.exists(db_path):
         open(db_path, 'a').close()
         logger.info(f"Created new DB file at {db_path}")
