@@ -877,15 +877,6 @@ def init_db():
         db.session.add(job)
         db.session.commit()
 
-@app.route('/__reset_db__')
-def reset_db():
-    import os
-    db_path = os.path.join(BASE_DIR, 'data', 'pcrrg_fieldops.db')
-    if os.path.exists(db_path):
-        os.remove(db_path)
-        return "DB deleted on server. Redeploy now."
-    return "DB file not found on server."
-
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER_PHOTOS'], exist_ok=True)
     os.makedirs(app.config['UPLOAD_FOLDER_CONTRACTS'], exist_ok=True)
