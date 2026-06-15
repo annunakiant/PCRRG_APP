@@ -65,7 +65,7 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(255))
     phone = db.Column(db.String(50))
     email = db.Column(db.String(255))
-    role = db.Column(db.String(50), default='tech')
+    role = db.Column(db.String(50), default='tech')  # 'tech', 'admin'
 
     def is_admin(self):
         return self.role == 'admin'
@@ -77,7 +77,7 @@ class Job(db.Model):
     title = db.Column(db.String(255), nullable=False)
     client_name = db.Column(db.String(255))
     address = db.Column(db.String(255))
-    status = db.Column(db.String(50), default='open')
+    status = db.Column(db.String(50), default='open')  # open, closed, archived
     service_type = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime)
@@ -86,11 +86,13 @@ class Job(db.Model):
     packout_items = db.relationship('PackoutItem', backref='job', lazy='dynamic')
     contracts = db.relationship('JobContract', backref='job', lazy='dynamic')
     custom_values = db.relationship('CustomFieldValue', backref='job', lazy='dynamic')
+    tasks = db.relationship('JobTask', backref='job', lazy='dynamic')
 
 
 class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     filename = db.Column(db.String(255), nullable=False)
     category = db.Column(db.String(100))
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -145,9 +147,9 @@ class CustomField(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tab_id = db.Column(db.Integer, db.ForeignKey('custom_tab.id'), nullable=False)
     label = db.Column(db.String(255), nullable=False)
-    field_type = db.Column(db.String(50), nullable=False)
+    field_type = db.Column(db.String(50), nullable=False)  # text, number, select, checkbox
     required = db.Column(db.Boolean, default=False)
-    options = db.Column(db.String(255))
+    options = db.Column(db.String(255))  # comma-separated for select
 
     tab = db.relationship('CustomTab', backref='fields')
 
@@ -159,6 +161,42 @@ class CustomFieldValue(db.Model):
     value = db.Column(db.String(255))
 
     field = db.relationship('CustomField')
+
+
+class EmployeeSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'))
+    clock_in_at = db.Column(db.DateTime, default=datetime.utcnow)
+    clock_out_at = db.Column(db.DateTime)
+    clock_in_lat = db.Column(db.Float)
+    clock_in_lon = db.Column(db.Float)
+    clock_out_lat = db.Column(db.Float)
+    clock_out_lon = db.Column(db.Float)
+    notes = db.Column(db.String(255))
+
+    user = db.relationship('User')
+    job = db.relationship('Job')
+
+
+class JobTaskTemplate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255))
+    service_type = db.Column(db.String(100))  # optional: link to service type
+
+
+class JobTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey('job_task_template.id'))
+    label = db.Column(db.String(255), nullable=False)
+    completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime)
+    completed_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    template = db.relationship('JobTaskTemplate')
+    completed_by = db.relationship('User')
 
 
 # -----------------------------------------------------------------------------
@@ -235,6 +273,7 @@ def dashboard():
     contracts_pending = JobContract.query.filter_by(signed=False).count()
 
     recent_jobs = Job.query.order_by(Job.created_at.desc()).limit(10).all()
+    active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
 
     return render_template(
         'dashboard.html',
@@ -243,7 +282,8 @@ def dashboard():
         jobs_archived=jobs_archived,
         inventory_count=inventory_count,
         contracts_pending=contracts_pending,
-        recent_jobs=recent_jobs
+        recent_jobs=recent_jobs,
+        active_sessions=active_sessions
     )
 
 
@@ -265,7 +305,8 @@ def job_timeline(job_id):
             'meta': {
                 'filename': p.filename,
                 'lat': p.latitude,
-                'lon': p.longitude
+                'lon': p.longitude,
+                'user': p.user_id
             }
         })
 
@@ -293,6 +334,16 @@ def job_timeline(job_id):
             }
         })
 
+    for t in job.tasks.order_by(JobTask.id.desc()).all():
+        events.append({
+            'type': 'task',
+            'timestamp': t.completed_at or job.created_at,
+            'label': f'Task: {t.label} {"(Done)" if t.completed else "(Pending)"}',
+            'meta': {
+                'completed_by': t.completed_by_id
+            }
+        })
+
     events.sort(key=lambda e: e['timestamp'] or job.created_at, reverse=True)
 
     return render_template('timeline.html', job=job, events=events)
@@ -310,6 +361,7 @@ def view_job(job_id):
     contracts = job.contracts.all()
     templates = ContractTemplate.query.all()
     tabs = CustomTab.query.order_by(CustomTab.order).all()
+    tasks = job.tasks.order_by(JobTask.id).all()
 
     values_map = {v.field_id: v.value for v in job.custom_values}
 
@@ -321,7 +373,8 @@ def view_job(job_id):
         contracts=contracts,
         templates=templates,
         tabs=tabs,
-        values_map=values_map
+        values_map=values_map,
+        tasks=tasks
     )
 
 
@@ -429,6 +482,76 @@ def delete_job(job_id):
 
 
 # -----------------------------------------------------------------------------
+# JOB TASK CHECKLISTS
+# -----------------------------------------------------------------------------
+@app.route('/admin/task-templates', methods=['GET', 'POST'])
+@login_required
+def admin_task_templates():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        service_type = request.form.get('service_type')
+        tmpl = JobTaskTemplate(
+            name=name,
+            description=description,
+            service_type=service_type
+        )
+        db.session.add(tmpl)
+        db.session.commit()
+        flash('Task template created.')
+        return redirect(url_for('admin_task_templates'))
+
+    templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
+    return render_template('admin_task_templates.html', templates=templates)
+
+
+@app.route('/jobs/<int:job_id>/tasks/add', methods=['POST'])
+@login_required
+def add_job_task(job_id):
+    job = Job.query.get_or_404(job_id)
+    template_id = request.form.get('template_id')
+    label = request.form.get('label')
+
+    if template_id:
+        tmpl = JobTaskTemplate.query.get(int(template_id))
+        label = label or tmpl.name
+
+    task = JobTask(
+        job_id=job.id,
+        template_id=int(template_id) if template_id else None,
+        label=label or 'Task'
+    )
+    db.session.add(task)
+    db.session.commit()
+    flash('Task added to job.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+@app.route('/jobs/<int:job_id>/tasks/<int:task_id>/toggle', methods=['POST'])
+@login_required
+def toggle_job_task(job_id, task_id):
+    job = Job.query.get_or_404(job_id)
+    task = JobTask.query.get_or_404(task_id)
+
+    if task.completed:
+        task.completed = False
+        task.completed_at = None
+        task.completed_by_id = None
+    else:
+        task.completed = True
+        task.completed_at = datetime.utcnow()
+        task.completed_by_id = current_user.id
+
+    db.session.commit()
+    flash('Task status updated.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+# -----------------------------------------------------------------------------
 # PHOTO UPLOAD (GPS + CAMERA)
 # -----------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/upload_photo', methods=['POST'])
@@ -452,6 +575,7 @@ def upload_photo(job_id):
 
     photo = Photo(
         job_id=job.id,
+        user_id=current_user.id,
         filename=filename,
         category=request.form.get('category'),
         latitude=float(lat) if lat else None,
@@ -733,6 +857,15 @@ def archive_job(job_id):
                 'longitude': c.longitude
             }
             for c in job.contracts.all()
+        ],
+        'tasks': [
+            {
+                'label': t.label,
+                'completed': t.completed,
+                'completed_at': t.completed_at.isoformat() if t.completed_at else None,
+                'completed_by_id': t.completed_by_id
+            }
+            for t in job.tasks.all()
         ]
     }
 
@@ -760,13 +893,17 @@ def admin_home():
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).limit(10).all()
     tabs = CustomTab.query.order_by(CustomTab.order).all()
     theme = ThemeSettings.query.first()
+    templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
+    active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
 
     return render_template(
         'admin.html',
         jobs=jobs,
         inventory_items=inventory_items,
         tabs=tabs,
-        theme=theme
+        theme=theme,
+        task_templates=templates,
+        active_sessions=active_sessions
     )
 
 
@@ -902,6 +1039,54 @@ def save_custom_fields(job_id):
     db.session.commit()
     flash('Custom fields saved.')
     return redirect(url_for('view_job', job_id=job.id))
+
+
+# -----------------------------------------------------------------------------
+# EMPLOYEE LOGIN + TRACKING (EVENT-ONLY GPS)
+# -----------------------------------------------------------------------------
+@app.route('/employee/clock-in', methods=['POST'])
+@login_required
+def employee_clock_in():
+    job_id = request.form.get('job_id')
+    lat = request.form.get('lat')
+    lon = request.form.get('lon')
+    notes = request.form.get('notes')
+
+    session = EmployeeSession(
+        user_id=current_user.id,
+        job_id=int(job_id) if job_id else None,
+        clock_in_at=datetime.utcnow(),
+        clock_in_lat=float(lat) if lat else None,
+        clock_in_lon=float(lon) if lon else None,
+        notes=notes
+    )
+    db.session.add(session)
+    db.session.commit()
+    flash('Clock in recorded.')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/employee/clock-out', methods=['POST'])
+@login_required
+def employee_clock_out():
+    lat = request.form.get('lat')
+    lon = request.form.get('lon')
+
+    session = EmployeeSession.query.filter_by(
+        user_id=current_user.id,
+        clock_out_at=None
+    ).order_by(EmployeeSession.clock_in_at.desc()).first()
+
+    if not session:
+        flash('No active session to clock out.')
+        return redirect(url_for('dashboard'))
+
+    session.clock_out_at = datetime.utcnow()
+    session.clock_out_lat = float(lat) if lat else None
+    session.clock_out_lon = float(lon) if lon else None
+    db.session.commit()
+    flash('Clock out recorded.')
+    return redirect(url_for('dashboard'))
 
 
 # -----------------------------------------------------------------------------
