@@ -857,47 +857,33 @@ def logout():
 def service_worker():
     return app.send_static_file('service-worker.js')
 
-
 def init_db():
     db.create_all()
 
+    # Ensure default admin exists
     if not User.query.filter_by(username='admin').first():
-        admin = User(username='admin', pin='1234', name='Admin', role='admin')
+        admin = User(
+            username='admin',
+            pin='1234',
+            name='Admin',
+            role='admin'
+        )
         db.session.add(admin)
         db.session.commit()
 
-    if Job.query.count() == 0:
-        job = Job(
-            job_number='PCRRG-1001',
-            title='Sample Job',
-            client_name='Acme Corp',
-            address='123 Main St',
-            service_type='Water Mitigation'
-        )
-        db.session.add(job)
-        db.session.commit()
-        
-@app.before_request
-def ensure_db_folder():
+
+@app.before_first_request
+def bootstrap_db():
     import os
+
+    # Ensure data folder exists
     db_folder = os.path.join(BASE_DIR, 'data')
+    os.makedirs(db_folder, exist_ok=True)
+
+    # Ensure DB file exists
     db_path = os.path.join(db_folder, 'pcrrg_fieldops.db')
-
-    # Ensure /data folder exists
-    if not os.path.exists(db_folder):
-        os.makedirs(db_folder, exist_ok=True)
-
-    # Ensure DB file exists (create empty file if missing)
     if not os.path.exists(db_path):
         open(db_path, 'a').close()
 
-if __name__ == '__main__':
-    os.makedirs(app.config['UPLOAD_FOLDER_PHOTOS'], exist_ok=True)
-    os.makedirs(app.config['UPLOAD_FOLDER_CONTRACTS'], exist_ok=True)
-    os.makedirs(app.config['UPLOAD_FOLDER_PACKOUT'], exist_ok=True)
-    os.makedirs(app.config['ARCHIVE_FOLDER'], exist_ok=True)
-
-    with app.app_context():
-        init_db()
-
-    app.run(debug=True)
+    # Create tables + admin inside app context
+    init_db()
