@@ -1,26 +1,33 @@
 ﻿{% extends "base.html" %}
 {% block title %}Contracts{% endblock %}
 {% block subtitle %}Templates and signed agreements{% endblock %}
+
 {% block content %}
 <div class="grid">
   <div class="card">
-    <div class="card-title">Create Contract Template</div>
-    <form method="post" action="{{ url_for('create_contract_template') }}" style="font-size:0.85rem;">
+    <div class="card-title">Upload Contract Template</div>
+    <div class="card-sub">Different contracts for different services</div>
+    <form method="post" action="{{ url_for('create_contract_template') }}" enctype="multipart/form-data" style="font-size:0.85rem;">
       <label>Name</label>
       <input name="name" placeholder="e.g. Standard Mitigation Authorization" required
              style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-      <label>Body</label>
-      <textarea name="body" placeholder="Contract text..." rows="8"
-                style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;"></textarea>
-      <button class="btn btn-primary" type="submit" style="margin-top:0.5rem;">Save Template</button>
+      <label>Upload PDF or DOCX</label>
+      <input type="file" name="file" required
+             style="width:100%;margin-bottom:0.5rem;">
+      <button class="btn btn-primary" type="submit">Save Template</button>
     </form>
   </div>
+
   <div class="card">
-    <div class="card-title">Templates</div>
+    <div class="card-title">Available Templates</div>
+    <div class="card-sub">Used in job dropdowns</div>
     <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
       {% for t in templates %}
       <li style="margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:1px solid #1f2937;">
         <strong>{{ t.name }}</strong>
+        {% if t.filename %}
+        <span style="font-size:0.75rem;color:#9ca3af;">({{ t.filename }})</span>
+        {% endif %}
         <form method="post" action="{{ url_for('delete_contract_template', template_id=t.id) }}" style="margin-top:0.25rem;">
           <button class="btn btn-outline" style="padding:0.2rem 0.5rem;font-size:0.75rem;">Delete</button>
         </form>
@@ -29,8 +36,10 @@
     </ul>
   </div>
 </div>
+
 <div class="card" style="margin-top:1.5rem;">
   <div class="card-title">Signed Contracts</div>
+  <div class="card-sub">Attached to job reports</div>
   <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
     {% for c in signed_contracts %}
     <li style="margin-bottom:0.5rem;">
