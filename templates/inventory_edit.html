@@ -1,13 +1,24 @@
-﻿{% extends 'base.html' %}
+﻿{% extends "base.html" %}
+{% block title %}Edit Inventory Item{% endblock %}
+{% block subtitle %}Update equipment & materials{% endblock %}
 {% block content %}
-<h1 class='h4 mb-3'>{{ 'New' if not item else 'Edit' }} Inventory Item</h1>
-<form method='post'>
-  <div class='mb-3'><label class='form-label'>Name</label><input class='form-control' name='name' value='{{ item.name if item else "" }}'></div>
-  <div class='mb-3'><label class='form-label'>SKU</label><input class='form-control' name='sku' value='{{ item.sku if item else "" }}'></div>
-  <div class='mb-3'><label class='form-label'>Barcode</label><input class='form-control' name='barcode' value='{{ item.barcode if item else "" }}'></div>
-  <div class='mb-3'><label class='form-label'>Quantity</label><input class='form-control' name='quantity' value='{{ item.quantity if item else 0 }}'></div>
-  <div class='mb-3'><label class='form-label'>Location</label><input class='form-control' name='location' value='{{ item.location if item else "" }}'></div>
-  <div class='mb-3'><label class='form-label'>Notes</label><input class='form-control' name='notes' value='{{ item.notes if item else "" }}'></div>
-  <button class='btn btn-primary' type='submit'>Save</button>
-</form>
+<div class="card" style="max-width:520px;margin:0 auto;">
+  <div class="card-title">Inventory Item</div>
+  <form method="post" style="font-size:0.85rem;">
+    <label>Name</label>
+    <input name="name" value="{{ item.name }}" required
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Quantity</label>
+    <input name="quantity" type="number" value="{{ item.quantity }}"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Location</label>
+    <input name="location" value="{{ item.location }}"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Barcode</label>
+    <input name="barcode" value="{{ item.barcode }}"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a href="{{ url_for('inventory_list') }}" class="btn btn-outline" style="margin-left:0.5rem;">Back</a>
+  </form>
+</div>
 {% endblock %}

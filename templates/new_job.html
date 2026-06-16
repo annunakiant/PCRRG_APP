@@ -1,12 +1,33 @@
-﻿{% extends 'base.html' %}
+﻿{% extends "base.html" %}
+{% block title %}New Job{% endblock %}
+{% block subtitle %}Create a CompanyCam-style project{% endblock %}
 {% block content %}
-<h1 class='h4 mb-3'>New Job</h1>
-<form method='post'>
-  <div class='mb-3'><label class='form-label'>Job Number</label><input class='form-control' name='job_number'></div>
-  <div class='mb-3'><label class='form-label'>Title</label><input class='form-control' name='title'></div>
-  <div class='mb-3'><label class='form-label'>Client Name</label><input class='form-control' name='client_name'></div>
-  <div class='mb-3'><label class='form-label'>Address</label><input class='form-control' name='address'></div>
-  <div class='mb-3'><label class='form-label'>Service Type</label><input class='form-control' name='service_type'></div>
-  <button class='btn btn-primary' type='submit'>Create</button>
-</form>
+<div class="card" style="max-width:640px;margin:0 auto;">
+  <div class="card-title">Job Details</div>
+  <form method="post" style="font-size:0.85rem;">
+    <label>Job Number</label>
+    <input name="job_number" placeholder="e.g. PCR-2026-001" required
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Title</label>
+    <input name="title" placeholder="e.g. Water Loss – Kitchen"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Client Name</label>
+    <input name="client_name"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Address</label>
+    <input name="address"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Service Type</label>
+    <input name="service_type" placeholder="Mitigation, Rebuild, Contents..."
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Status</label>
+    <select name="status"
+            style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+      <option value="Open">Open</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Closed">Closed</option>
+    </select>
+    <button class="btn btn-primary" type="submit">Create Job</button>
+  </form>
+</div>
 {% endblock %}

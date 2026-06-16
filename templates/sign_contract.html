@@ -1,10 +1,32 @@
-﻿{% extends 'base.html' %}
+﻿{% extends "base.html" %}
+{% block title %}Sign Contract{% endblock %}
+{% block subtitle %}{{ job.job_number }} – {{ template.name }}{% endblock %}
 {% block content %}
-<h1 class='h4 mb-3'>Sign Contract for {{ job.job_number }} — {{ job.title }}</h1>
-<p>Signer, please enter your name and email to sign this contract.</p>
-<form method='post'>
-  <div class='mb-3'><label class='form-label'>Your Name</label><input class='form-control' name='signer_name' required></div>
-  <div class='mb-3'><label class='form-label'>Your Email</label><input class='form-control' name='signer_email' required></div>
-  <button class='btn btn-success' type='submit'>Sign Contract</button>
-</form>
+<div class="card">
+  <div class="card-title">Contract</div>
+  <div style="font-size:0.85rem;white-space:pre-wrap;margin-bottom:1rem;">
+    {{ template.body }}
+  </div>
+  <form method="post" style="font-size:0.85rem;">
+    <label>Client Name</label>
+    <input name="client_name" value="{{ job.client_name }}"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Signature (type full name)</label>
+    <input name="signature" required
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <input type="hidden" name="lat" id="contract-lat">
+    <input type="hidden" name="lon" id="contract-lon">
+    <button class="btn btn-primary" type="submit">Sign Contract</button>
+    <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn btn-outline" style="margin-left:0.5rem;">Back to Job</a>
+  </form>
+</div>
+<script>
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var lat=document.getElementById('contract-lat');
+      var lon=document.getElementById('contract-lon');
+      if(lat&&lon){lat.value=pos.coords.latitude;lon.value=pos.coords.longitude;}
+    });
+  }
+</script>
 {% endblock %}
