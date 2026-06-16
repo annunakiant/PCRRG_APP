@@ -3,73 +3,15 @@
 {% block subtitle %}{{ job.job_number }} – {{ job.title }}{% endblock %}
 
 {% block content %}
-<div class="grid">
-  <div class="card">
-    <div class="card-title">Job Details</div>
-    <div style="font-size:0.85rem;">
-      <div><strong>Client:</strong> {{ job.client_name }}</div>
-      <div><strong>Address:</strong> {{ job.address }}</div>
-      <div><strong>Phone:</strong> {{ job.phone }}</div>
-      <div><strong>Service:</strong> {{ job.service_type }}</div>
-      <div><strong>Status:</strong> {{ job.status }}</div>
-    </div>
-    <div style="margin-top:0.75rem;">
-      <a href="{{ url_for('edit_job', job_id=job.id) }}" class="btn btn-outline">Edit Job</a>
-      <a href="{{ url_for('archive_job', job_id=job.id) }}" class="btn btn-outline">Close / Archive</a>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Attached Reports</div>
-    <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
-      {% for r in job.reports %}
-      <li style="margin-bottom:0.5rem;">
-        <strong>{{ r.type }}</strong> – {{ r.created_at.strftime('%Y-%m-%d') }}
-        <a href="{{ url_for('view_report', report_id=r.id) }}" style="margin-left:0.5rem;">View</a>
-        <a href="{{ url_for('edit_report', report_id=r.id) }}" style="margin-left:0.5rem;">Edit</a>
-        <a href="{{ url_for('delete_report', report_id=r.id) }}" style="margin-left:0.5rem;">Delete</a>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Photos by Room</div>
-    <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
-      {% for room in job.rooms %}
-      <li style="margin-bottom:0.5rem;">
-        <strong>{{ room.name }}</strong>
-        <span style="font-size:0.75rem;color:#9ca3af;">({{ room.photos|length }} photos)</span>
-        <a href="{{ url_for('view_room_photos', room_id=room.id) }}" style="margin-left:0.5rem;">Open</a>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-</div>
-
-<div class="card" style="margin-top:1.5rem;">
-  <div class="card-title">Packout Report</div>
-  <a href="{{ url_for('packout_new', job_id=job.id) }}" class="btn btn-primary">New Packout Report</a>
-  <ul style="list-style:none;padding:0;margin-top:0.75rem;font-size:0.85rem;">
-    {% for p in job.packouts %}
-    <li style="margin-bottom:0.5rem;">
-      {{ p.created_at.strftime('%Y-%m-%d') }} – {{ p.location_summary }}
-      <a href="{{ url_for('packout_view', packout_id=p.id) }}" style="margin-left:0.5rem;">View</a>
-      <a href="{{ url_for('packout_edit', packout_id=p.id) }}" style="margin-left:0.5rem;">Edit</a>
-      <a href="{{ url_for('packout_delete', packout_id=p.id) }}" style="margin-left:0.5rem;">Delete</a>
-    </li>
-    {% endfor %}
-  </ul>
-</div>
-
-<div class="card" style="margin-top:1.5rem;">
-  <div class="card-title">Service Task Checklists</div>
-  <a href="{{ url_for('job_checklist_add', job_id=job.id) }}" class="btn btn-primary">Add Checklist</a>
-  <ul style="list-style:none;padding:0;margin-top:0.75rem;font-size:0.85rem;">
+<div class="card">
+  <div class="card-title">Checklists</div>
+  <a href="{{ url_for('job_checklist_add', job_id=job.id) }}" class="btn btn-primary" style="margin-bottom:0.5rem;">Add Checklist</a>
+  <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
     {% for c in job.checklists %}
     <li style="margin-bottom:0.5rem;">
-      {{ c.name }} – {{ c.items|length }} tasks
+      <strong>{{ c.name }}</strong> ({{ c.tasks|length }} tasks)
       <a href="{{ url_for('job_checklist_view', checklist_id=c.id) }}" style="margin-left:0.5rem;">Open</a>
+      <a href="{{ url_for('job_checklist_edit', checklist_id=c.id) }}" style="margin-left:0.5rem;">Edit</a>
     </li>
     {% endfor %}
   </ul>
