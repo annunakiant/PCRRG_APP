@@ -1,4 +1,4 @@
-import os
+ï»¿import os
 import json
 import logging
 from datetime import datetime
@@ -1369,7 +1369,7 @@ def job_checklist_add(job_id):
     templates = TaskTemplate.query.all() if 'TaskTemplate' in globals() else []
 
     if request.method == 'POST':
-        name = f"Checklist – {job.job_number}"
+        name = f"Checklist - {job.job_number}"
         template_id = request.form.get('template_id')
         custom_tasks_raw = request.form.get('custom_tasks', '').strip()
 
@@ -1761,7 +1761,7 @@ def job_checklist_add(job_id):
     templates = TaskTemplate.query.all() if 'TaskTemplate' in globals() else []
 
     if request.method == 'POST':
-        name = f"Checklist – {job.job_number}"
+        name = f"Checklist - {job.job_number}"
         template_id = request.form.get('template_id')
         custom_tasks_raw = request.form.get('custom_tasks', '').strip()
 
@@ -1980,3 +1980,4 @@ def admin_settings():
         return redirect(url_for('admin_settings'))
 
     return render_template('admin_settings.html', settings=settings)
+
