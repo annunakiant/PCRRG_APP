@@ -367,6 +367,33 @@ def admin_home():
         active_sessions=active_sessions
     )
 
+@app.route('/admin/theme', methods=['POST'])
+@login_required
+def admin_theme_update():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    primary = request.form.get('primary_color')
+    secondary = request.form.get('secondary_color')
+    logo = request.form.get('logo_url')
+
+    theme = ThemeSettings.query.first()
+    if not theme:
+        theme = ThemeSettings()
+        db.session.add(theme)
+
+    if primary:
+        theme.primary_color = primary
+    if secondary:
+        theme.secondary_color = secondary
+    if logo:
+        theme.logo_url = logo
+
+    db.session.commit()
+    flash('Theme updated.')
+    return redirect(url_for('admin_home'))
+
 # -------------------------------------------------------------------------
 # TIMELINE
 # -------------------------------------------------------------------------
