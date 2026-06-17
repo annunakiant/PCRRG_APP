@@ -124,7 +124,7 @@ class InventoryItem(db.Model):
 # REMOVED DUPLICATE JobContract
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'))
+    template_id = db.Column(db.Integer, )
     signed = db.Column(db.Boolean, default=False)
     signed_at = db.Column(db.DateTime)
     signer_name = db.Column(db.String(255))
@@ -1191,4 +1191,5 @@ def supermega_bootstrap():
 
 supermega_bootstrap()
 logger.info("SUPER-MEGA app bootstrap complete.")
+
 
