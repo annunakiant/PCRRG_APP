@@ -90,7 +90,7 @@ class Job(db.Model):
     tasks = db.relationship('JobTask', backref='job', lazy='dynamic')
 
 
-class Photo(db.Model):
+# DUPLICATE REMOVED: class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -120,7 +120,7 @@ class InventoryItem(db.Model):
     notes = db.Column(db.String(255))
 
 
-class ContractTemplate(db.Model):
+# DUPLICATE REMOVED: class ContractTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
@@ -1208,7 +1208,7 @@ from flask import jsonify
 
 # ================== MODELS ==================
 
-class Checklist(db.Model):
+# DUPLICATE REMOVED: class Checklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -1217,7 +1217,7 @@ class Checklist(db.Model):
     job = db.relationship('Job', backref=db.backref('checklists', lazy=True))
 
 
-class ChecklistTask(db.Model):
+# DUPLICATE REMOVED: class ChecklistTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     checklist_id = db.Column(db.Integer, db.ForeignKey('checklist.id'), nullable=False)
     label = db.Column(db.String(255), nullable=False)
@@ -1239,7 +1239,7 @@ class ChecklistTask(db.Model):
     job = db.relationship('Job', backref=db.backref('packout_items', lazy=True))
 
 
-class PackoutPhoto(db.Model):
+# DUPLICATE REMOVED: class PackoutPhoto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey('packout_item.id'), nullable=False)
     url = db.Column(db.String(512))
@@ -1248,13 +1248,13 @@ class PackoutPhoto(db.Model):
     item = db.relationship('PackoutItem', backref=db.backref('photos', lazy=True))
 
 
-class ContractTemplate(db.Model):
+# DUPLICATE REMOVED: class ContractTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     filename = db.Column(db.String(255))
 
 
-class SignedContract(db.Model):
+# DUPLICATE REMOVED: class SignedContract(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'), nullable=False)
@@ -1265,7 +1265,7 @@ class SignedContract(db.Model):
     template = db.relationship('ContractTemplate', backref=db.backref('signed_contracts', lazy=True))
 
 
-class Room(db.Model):
+# DUPLICATE REMOVED: class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -1273,7 +1273,7 @@ class Room(db.Model):
     job = db.relationship('Job', backref=db.backref('rooms', lazy=True))
 
 
-class Photo(db.Model):
+# DUPLICATE REMOVED: class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
     url = db.Column(db.String(512))
@@ -1282,7 +1282,7 @@ class Photo(db.Model):
     room = db.relationship('Room', backref=db.backref('photos', lazy=True))
 
 
-class AdminSettings(db.Model):
+# DUPLICATE REMOVED: class AdminSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     theme_name = db.Column(db.String(255), default="default")
     primary_color = db.Column(db.String(20), default="#22c55e")
@@ -1600,7 +1600,7 @@ from flask import jsonify
 
 # ================== MODELS ==================
 
-class Checklist(db.Model):
+# DUPLICATE REMOVED: class Checklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -1609,7 +1609,7 @@ class Checklist(db.Model):
     job = db.relationship('Job', backref=db.backref('checklists', lazy=True))
 
 
-class ChecklistTask(db.Model):
+# DUPLICATE REMOVED: class ChecklistTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     checklist_id = db.Column(db.Integer, db.ForeignKey('checklist.id'), nullable=False)
     label = db.Column(db.String(255), nullable=False)
@@ -1631,7 +1631,7 @@ class ChecklistTask(db.Model):
     job = db.relationship('Job', backref=db.backref('packout_items', lazy=True))
 
 
-class PackoutPhoto(db.Model):
+# DUPLICATE REMOVED: class PackoutPhoto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey('packout_item.id'), nullable=False)
     url = db.Column(db.String(512))
@@ -1640,13 +1640,13 @@ class PackoutPhoto(db.Model):
     item = db.relationship('PackoutItem', backref=db.backref('photos', lazy=True))
 
 
-class ContractTemplate(db.Model):
+# DUPLICATE REMOVED: class ContractTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     filename = db.Column(db.String(255))
 
 
-class SignedContract(db.Model):
+# DUPLICATE REMOVED: class SignedContract(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'), nullable=False)
@@ -1657,7 +1657,7 @@ class SignedContract(db.Model):
     template = db.relationship('ContractTemplate', backref=db.backref('signed_contracts', lazy=True))
 
 
-class Room(db.Model):
+# DUPLICATE REMOVED: class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -1665,7 +1665,7 @@ class Room(db.Model):
     job = db.relationship('Job', backref=db.backref('rooms', lazy=True))
 
 
-class Photo(db.Model):
+# DUPLICATE REMOVED: class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
     url = db.Column(db.String(512))
@@ -1674,7 +1674,7 @@ class Photo(db.Model):
     room = db.relationship('Room', backref=db.backref('photos', lazy=True))
 
 
-class AdminSettings(db.Model):
+# DUPLICATE REMOVED: class AdminSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     theme_name = db.Column(db.String(255), default="default")
     primary_color = db.Column(db.String(20), default="#22c55e")
@@ -1980,4 +1980,5 @@ def admin_settings():
         return redirect(url_for('admin_settings'))
 
     return render_template('admin_settings.html', settings=settings)
+
 
