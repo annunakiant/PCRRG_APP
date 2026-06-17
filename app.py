@@ -101,7 +101,7 @@ class Photo(db.Model):
     longitude = db.Column(db.Float)
 
 
-class PackoutItem(db.Model):
+# DUPLICATE PackoutItem REMOVED BY MEGAFIX
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -1228,7 +1228,7 @@ class ChecklistTask(db.Model):
     checklist = db.relationship('Checklist', backref=db.backref('tasks', lazy=True))
 
 
-class PackoutItem(db.Model):
+# DUPLICATE PackoutItem REMOVED BY MEGAFIX
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -1620,7 +1620,7 @@ class ChecklistTask(db.Model):
     checklist = db.relationship('Checklist', backref=db.backref('tasks', lazy=True))
 
 
-class PackoutItem(db.Model):
+# DUPLICATE PackoutItem REMOVED BY MEGAFIX
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
