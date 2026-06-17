@@ -176,7 +176,6 @@ class EmployeeSession(db.Model):
     notes = db.Column(db.String(255))
 
     user = db.relationship('User')
-    job = db.relationship('Job')
 
 
 class JobTaskTemplate(db.Model):
