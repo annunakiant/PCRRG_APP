@@ -283,7 +283,7 @@ def logout():
     flash('Logged out.')
     return redirect(url_for('login'))
 
-#@app.route('/admin')
+@app.route('/admin')
 @login_required
 def admin_home():
     if not is_admin():
@@ -306,7 +306,8 @@ def admin_home():
         task_templates=task_templates,
         active_sessions=active_sessions
     )
- -------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------
 # DASHBOARD
 # -------------------------------------------------------------------------
 @app.route('/')
