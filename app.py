@@ -1,4 +1,4 @@
-import os
+  import os
 import json
 import logging
 from datetime import datetime
@@ -14,44 +14,38 @@ from flask_login import (
 import smtplib
 from email.message import EmailMessage
 
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # BASE CONFIG + LOGGING
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 
-# SQLite DB in /data
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(
     BASE_DIR, 'data', 'pcrrg_fieldops_v2.db'
 )
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Upload folders
 app.config['UPLOAD_FOLDER_PHOTOS'] = os.path.join(BASE_DIR, 'static', 'uploads')
 app.config['UPLOAD_FOLDER_CONTRACTS'] = os.path.join(BASE_DIR, 'static', 'contracts')
 app.config['UPLOAD_FOLDER_PACKOUT'] = os.path.join(BASE_DIR, 'static', 'packouts')
 app.config['ARCHIVE_FOLDER'] = os.path.join(BASE_DIR, 'data', 'archive')
 
-# Basic logging
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
 )
 logger = logging.getLogger(__name__)
-
 logger.info("Starting PCRRG SUPER-MEGA app.py")
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # MODELS
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 class ThemeSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     primary_color = db.Column(db.String(20), default="#1E88E5")
@@ -182,13 +176,14 @@ class EmployeeSession(db.Model):
     notes = db.Column(db.String(255))
 
     user = db.relationship('User')
+    job = db.relationship('Job')
 
 
 class JobTaskTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.String(255))
-    service_type = db.Column(db.String(100))  # optional: link to service type
+    service_type = db.Column(db.String(100))
 
 
 class JobTask(db.Model):
@@ -203,10 +198,9 @@ class JobTask(db.Model):
     template = db.relationship('JobTaskTemplate')
     completed_by = db.relationship('User')
 
-
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # LOGIN + GLOBALS
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -234,10 +228,9 @@ def inject_globals():
         'theme': theme
     }
 
-
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # EMAIL
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 def send_job_email(job, to_email, subject, body):
     smtp_host = os.environ.get('SMTP_HOST')
     smtp_port = int(os.environ.get('SMTP_PORT', '587'))
@@ -264,10 +257,9 @@ def send_job_email(job, to_email, subject, body):
     except Exception as e:
         logger.error(f"Error sending email: {e}")
 
-
-# -----------------------------------------------------------------------------
-# AUTH ROUTES
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# AUTH
+# -------------------------------------------------------------------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -291,10 +283,9 @@ def logout():
     flash('Logged out.')
     return redirect(url_for('login'))
 
-
-# -----------------------------------------------------------------------------
-# DASHBOARD + PANELS
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# DASHBOARD
+# -------------------------------------------------------------------------
 @app.route('/')
 @login_required
 def dashboard():
@@ -318,15 +309,40 @@ def dashboard():
         active_sessions=active_sessions
     )
 
+# -------------------------------------------------------------------------
+# ADMIN HOME (for base.html nav)
+# -------------------------------------------------------------------------
+@app.route('/admin')
+@login_required
+def admin_home():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
 
-# -----------------------------------------------------------------------------
-# TIMELINE (CompanyCam-style)
-# -----------------------------------------------------------------------------
+    jobs = Job.query.order_by(Job.created_at.desc()).limit(10).all()
+    inventory_items = InventoryItem.query.order_by(InventoryItem.name).limit(10).all()
+    tabs = CustomTab.query.order_by(CustomTab.order).all()
+    theme = ThemeSettings.query.first()
+    task_templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
+    active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
+
+    return render_template(
+        'admin.html',
+        jobs=jobs,
+        inventory_items=inventory_items,
+        tabs=tabs,
+        theme=theme,
+        task_templates=task_templates,
+        active_sessions=active_sessions
+    )
+
+# -------------------------------------------------------------------------
+# TIMELINE
+# -------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/timeline')
 @login_required
 def job_timeline(job_id):
     job = Job.query.get_or_404(job_id)
-
     events = []
 
     for p in job.photos.order_by(Photo.uploaded_at.desc()).all():
@@ -377,13 +393,11 @@ def job_timeline(job_id):
         })
 
     events.sort(key=lambda e: e['timestamp'] or job.created_at, reverse=True)
-
     return render_template('timeline.html', job=job, events=events)
 
-
-# -----------------------------------------------------------------------------
-# JOB VIEW + LEAFLET MAP DATA
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# JOB VIEW + MAP DATA
+# -------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>')
 @login_required
 def view_job(job_id):
@@ -445,10 +459,9 @@ def job_map_data(job_id):
         'contracts': contract_points
     })
 
-
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # JOB CRUD
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 @app.route('/jobs/new', methods=['GET', 'POST'])
 @login_required
 def new_job():
@@ -512,10 +525,9 @@ def delete_job(job_id):
     flash('Job deleted.')
     return redirect(url_for('dashboard'))
 
-
-# -----------------------------------------------------------------------------
-# JOB TASK CHECKLISTS
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# JOB TASK TEMPLATES + TASKS
+# -------------------------------------------------------------------------
 @app.route('/admin/task-templates', methods=['GET', 'POST'])
 @login_required
 def admin_task_templates():
@@ -582,10 +594,9 @@ def toggle_job_task(job_id, task_id):
     flash('Task status updated.')
     return redirect(url_for('view_job', job_id=job.id))
 
-
-# -----------------------------------------------------------------------------
-# PHOTO UPLOAD (GPS + CAMERA)
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# PHOTO UPLOAD
+# -------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/upload_photo', methods=['POST'])
 @login_required
 def upload_photo(job_id):
@@ -620,10 +631,9 @@ def upload_photo(job_id):
     flash('Photo uploaded.')
     return redirect(url_for('view_job', job_id=job.id))
 
-
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # PACKOUT
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/packout/add', methods=['POST'])
 @login_required
 def add_packout_item(job_id):
@@ -656,10 +666,9 @@ def delete_packout_item(job_id, item_id):
     flash('Packout item deleted.')
     return redirect(url_for('view_job', job_id=job_id))
 
-
-# -----------------------------------------------------------------------------
-# INVENTORY + BARCODE
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# INVENTORY
+# -------------------------------------------------------------------------
 @app.route('/inventory')
 @login_required
 def inventory_list():
@@ -727,10 +736,9 @@ def inventory_delete(item_id):
     flash('Inventory item deleted.')
     return redirect(url_for('inventory_list'))
 
-
-# -----------------------------------------------------------------------------
-# CONTRACTS + E-SIGN (GPS)
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# CONTRACTS + E-SIGN
+# -------------------------------------------------------------------------
 @app.route('/contracts/templates', methods=['GET', 'POST'])
 @login_required
 def manage_contracts():
@@ -793,10 +801,9 @@ def sign_contract(job_id, contract_id):
 
     return render_template('sign_contract.html', job=job, contract=jc)
 
-
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # SHARE + ARCHIVE
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 @app.route('/jobs/<int:job_id>/share', methods=['POST'])
 @login_required
 def share_job(job_id):
@@ -909,10 +916,9 @@ def archive_job(job_id):
     flash('Job archived and exported.')
     return redirect(url_for('view_job', job_id=job.id))
 
-
-# -----------------------------------------------------------------------------
-# SUPER-MEGA DB BOOTSTRAP
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# SUPER-MEGA BOOTSTRAP
+# -------------------------------------------------------------------------
 def supermega_bootstrap():
     logger.info("Running SUPER-MEGA DB bootstrap...")
     os.makedirs(os.path.join(BASE_DIR, 'data'), exist_ok=True)
@@ -942,9 +948,9 @@ def supermega_bootstrap():
 supermega_bootstrap()
 logger.info("SUPER-MEGA app bootstrap complete.")
 
-
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # WSGI ENTRYPOINT
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 if __name__ == '__main__':
     app.run(debug=True)
+  
