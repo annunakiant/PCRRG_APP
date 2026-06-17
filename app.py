@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import logging
 from datetime import datetime
@@ -83,9 +83,14 @@ class Job(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime)
 
-                    
+    photos = db.relationship('Photo', backref='job', lazy='dynamic')
+    packout_items = db.relationship('PackoutItem', backref='job', lazy='dynamic')
+    contracts = db.relationship('JobContract', backref='job', lazy='dynamic')
+    custom_values = db.relationship('CustomFieldValue', backref='job', lazy='dynamic')
+    tasks = db.relationship('JobTask', backref='job', lazy='dynamic')
 
-# DUPLICATE REMOVED: # REMOVED DUPLICATE Photo
+
+class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -95,8 +100,10 @@ class Job(db.Model):
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
 
+    user = db.relationship('User')
 
-# DUPLICATE PackoutItem REMOVED BY MEGAFIX
+
+class PackoutItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -115,22 +122,24 @@ class InventoryItem(db.Model):
     notes = db.Column(db.String(255))
 
 
-# DUPLICATE REMOVED: class ContractTemplate(db.Model):
+class ContractTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
 
 
-# REMOVED DUPLICATE JobContract
+class JobContract(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    template_id = db.Column(db.Integer, )
+    template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'))
     signed = db.Column(db.Boolean, default=False)
     signed_at = db.Column(db.DateTime)
     signer_name = db.Column(db.String(255))
     signer_email = db.Column(db.String(255))
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
+
+    template = db.relationship('ContractTemplate')
 
 
 class CustomTab(db.Model):
@@ -150,7 +159,7 @@ class CustomField(db.Model):
     tab = db.relationship('CustomTab', backref='fields')
 
 
-# REMOVED DUPLICATE CustomFieldValue
+class CustomFieldValue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     field_id = db.Column(db.Integer, db.ForeignKey('custom_field.id'), nullable=False)
@@ -182,7 +191,7 @@ class JobTaskTemplate(db.Model):
     service_type = db.Column(db.String(100))  # optional: link to service type
 
 
-# REMOVED DUPLICATE JobTask
+class JobTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     template_id = db.Column(db.Integer, db.ForeignKey('job_task_template.id'))
@@ -1193,3 +1202,8 @@ supermega_bootstrap()
 logger.info("SUPER-MEGA app bootstrap complete.")
 
 
+# -----------------------------------------------------------------------------
+# FINAL RUN BLOCK
+# -----------------------------------------------------------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
