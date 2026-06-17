@@ -308,6 +308,38 @@ def dashboard():
         active_sessions=active_sessions
     )
 
+@app.route('/employee/clock-in', methods=['POST'])
+@login_required
+def employee_clock_in():
+    session = EmployeeSession(
+        user_id=current_user.id,
+        job_id=None,
+        clock_in_at=datetime.utcnow(),
+        clock_in_lat=None,
+        clock_in_lon=None
+    )
+    db.session.add(session)
+    db.session.commit()
+    flash('Clocked in.')
+    return redirect(url_for('dashboard'))
+
+@app.route('/employee/clock-out', methods=['POST'])
+@login_required
+def employee_clock_out():
+    session = EmployeeSession.query.filter_by(
+        user_id=current_user.id,
+        clock_out_at=None
+    ).first()
+
+    if session:
+        session.clock_out_at = datetime.utcnow()
+        db.session.commit()
+        flash('Clocked out.')
+    else:
+        flash('No active session.')
+
+    return redirect(url_for('dashboard'))
+
 # -------------------------------------------------------------------------
 # ADMIN HOME (for base.html nav)
 # -------------------------------------------------------------------------
