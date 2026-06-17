@@ -1982,3 +1982,182 @@ def admin_settings():
     return render_template('admin_settings.html', settings=settings)
 
 
+# ============================================================
+# CORE BACKEND: JOBS LIST, JOB FOLDER, CHECKLISTS, DELETE JOB
+# ============================================================
+
+from datetime import datetime
+import json
+from flask import jsonify
+
+# ================== CHECKLIST MODELS ==================
+
+class Checklist(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    job = db.relationship('Job', backref=db.backref('checklists', lazy=True))
+
+
+class ChecklistTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    checklist_id = db.Column(db.Integer, db.ForeignKey('checklist.id'), nullable=False)
+    label = db.Column(db.String(255), nullable=False)
+    completed = db.Column(db.Boolean, default=False)
+    completed_by = db.Column(db.String(255))
+    completed_at = db.Column(db.DateTime)
+
+    checklist = db.relationship('Checklist', backref=db.backref('tasks', lazy=True))
+
+
+# ================== JOBS LIST (SEARCHABLE) ==================
+
+@app.route('/jobs')
+@login_required
+def jobs_list():
+    q_name = request.args.get('q_name', '').strip()
+    q_address = request.args.get('q_address', '').strip()
+    q_phone = request.args.get('q_phone', '').strip()
+
+    query = Job.query
+
+    if q_name:
+        query = query.filter(Job.client_name.ilike(f"%{q_name}%"))
+    if q_address:
+        query = query.filter(Job.address.ilike(f"%{q_address}%"))
+    if q_phone:
+        query = query.filter(Job.address.ilike(f"%{q_phone}%"))
+
+    jobs = query.order_by(Job.created_at.desc()).all()
+
+    return render_template('jobs_list.html', jobs=jobs)
+
+
+# ================== JOB FOLDER VIEW ==================
+
+@app.route('/jobs/<int:job_id>')
+@login_required
+def view_job(job_id):
+    job = Job.query.get_or_404(job_id)
+    return render_template('job_folder.html', job=job)
+
+
+# ================== DELETE JOB (SAFE CASCADE FOR CHECKLISTS) ==================
+
+@app.route('/jobs/<int:job_id>/delete', methods=['POST'])
+@login_required
+def delete_job(job_id):
+    job = Job.query.get_or_404(job_id)
+
+    # Delete checklists + tasks
+    for checklist in job.checklists:
+        ChecklistTask.query.filter_by(checklist_id=checklist.id).delete()
+        db.session.delete(checklist)
+
+    db.session.delete(job)
+    db.session.commit()
+
+    return redirect(url_for('jobs_list'))
+
+
+# ================== CHECKLIST ROUTES ==================
+
+@app.route('/jobs/<int:job_id>/checklists/add', methods=['GET', 'POST'])
+@login_required
+def job_checklist_add(job_id):
+    job = Job.query.get_or_404(job_id)
+    templates = TaskTemplate.query.all() if 'TaskTemplate' in globals() else []
+
+    if request.method == 'POST':
+        name = f"Checklist - {job.job_number}"
+        template_id = request.form.get('template_id')
+        custom_tasks_raw = request.form.get('custom_tasks', '').strip()
+
+        checklist = Checklist(job_id=job.id, name=name)
+        db.session.add(checklist)
+        db.session.flush()
+
+        # From template
+        if template_id:
+            tmpl = TaskTemplate.query.get(int(template_id))
+            if tmpl and hasattr(tmpl, 'items'):
+                for label in tmpl.items:
+                    db.session.add(ChecklistTask(checklist_id=checklist.id, label=label))
+
+        # Custom tasks
+        if custom_tasks_raw:
+            for line in custom_tasks_raw.splitlines():
+                line = line.strip()
+                if line:
+                    db.session.add(ChecklistTask(checklist_id=checklist.id, label=line))
+
+        db.session.commit()
+        return redirect(url_for('job_checklist_view', checklist_id=checklist.id))
+
+    return render_template('job_checklist_add.html', job=job, templates=templates)
+
+
+@app.route('/checklists/<int:checklist_id>')
+@login_required
+def job_checklist_view(checklist_id):
+    checklist = Checklist.query.get_or_404(checklist_id)
+    job = checklist.job
+
+    tasks_payload = []
+    for t in checklist.tasks:
+        tasks_payload.append({
+            'id': t.id,
+            'label': t.label,
+            'completed': bool(t.completed),
+            'completed_by': t.completed_by or '',
+            'completed_at': t.completed_at.strftime('%Y-%m-%d %H:%M') if t.completed_at else ''
+        })
+
+    return render_template(
+        'job_checklist_view.html',
+        job=job,
+        checklist=checklist,
+        tasks_json=json.dumps(tasks_payload)
+    )
+
+
+@app.route('/checklists/<int:checklist_id>/edit', methods=['GET', 'POST'])
+@login_required
+def job_checklist_edit(checklist_id):
+    checklist = Checklist.query.get_or_404(checklist_id)
+
+    if request.method == 'POST':
+        for t in checklist.tasks:
+            new_label = request.form.get(f'task_{t.id}')
+            if new_label:
+                t.label = new_label.strip()
+        db.session.commit()
+        return redirect(url_for('job_checklist_view', checklist_id=checklist.id))
+
+    return render_template('job_checklist_edit.html', checklist=checklist)
+
+
+@app.route('/api/checklists/<int:checklist_id>/tasks/<int:task_id>/toggle', methods=['POST'])
+@login_required
+def toggle_task(checklist_id, task_id):
+    checklist = Checklist.query.get_or_404(checklist_id)
+    task = ChecklistTask.query.filter_by(id=task_id, checklist_id=checklist.id).first_or_404()
+
+    task.completed = not task.completed
+    if task.completed:
+        task.completed_by = current_user.username
+        task.completed_at = datetime.utcnow()
+    else:
+        task.completed_by = None
+        task.completed_at = None
+
+    db.session.commit()
+
+    return jsonify({
+        'id': task.id,
+        'completed': task.completed,
+        'completed_by': task.completed_by or '',
+        'completed_at': task.completed_at.strftime('%Y-%m-%d %H:%M') if task.completed_at else ''
+    })
