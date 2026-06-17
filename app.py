@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import logging
 from datetime import datetime
@@ -323,6 +323,7 @@ def employee_clock_in():
     flash('Clocked in.')
     return redirect(url_for('dashboard'))
 
+
 @app.route('/employee/clock-out', methods=['POST'])
 @login_required
 def employee_clock_out():
@@ -341,7 +342,7 @@ def employee_clock_out():
     return redirect(url_for('dashboard'))
 
 # -------------------------------------------------------------------------
-# ADMIN HOME (for base.html nav)
+# ADMIN HOME + THEME + USERS + TABS
 # -------------------------------------------------------------------------
 @app.route('/admin')
 @login_required
@@ -366,6 +367,7 @@ def admin_home():
         task_templates=task_templates,
         active_sessions=active_sessions
     )
+
 
 @app.route('/admin/theme', methods=['POST'])
 @login_required
@@ -393,6 +395,139 @@ def admin_theme_update():
     db.session.commit()
     flash('Theme updated.')
     return redirect(url_for('admin_home'))
+
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    users = User.query.order_by(User.username).all()
+    return render_template('admin_users.html', users=users)
+
+
+@app.route('/admin/users/new', methods=['GET', 'POST'])
+@login_required
+def admin_users_new():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        pin = request.form.get('pin')
+        name = request.form.get('name')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
+        role = request.form.get('role') or 'tech'
+
+        if not username or not pin:
+            flash('Username and PIN are required.')
+            return redirect(url_for('admin_users_new'))
+
+        existing = User.query.filter_by(username=username).first()
+        if existing:
+            flash('Username already exists.')
+            return redirect(url_for('admin_users_new'))
+
+        user = User(
+            username=username,
+            pin=pin,
+            name=name,
+            phone=phone,
+            email=email,
+            role=role
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash('User created.')
+        return redirect(url_for('admin_users'))
+
+    return render_template('admin_users_edit.html', user=None)
+
+
+@app.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+def admin_users_edit(user_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        user.username = request.form.get('username') or user.username
+        user.pin = request.form.get('pin') or user.pin
+        user.name = request.form.get('name')
+        user.phone = request.form.get('phone')
+        user.email = request.form.get('email')
+        user.role = request.form.get('role') or user.role
+
+        db.session.commit()
+        flash('User updated.')
+        return redirect(url_for('admin_users'))
+
+    return render_template('admin_users_edit.html', user=user)
+
+
+@app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+def admin_users_delete(user_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    user = User.query.get_or_404(user_id)
+
+    if user.username == 'admin':
+        flash('Cannot delete default admin.')
+        return redirect(url_for('admin_users'))
+
+    db.session.delete(user)
+    db.session.commit()
+    flash('User deleted.')
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/tabs', methods=['GET', 'POST'])
+@login_required
+def admin_tabs():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        order = request.form.get('order') or 0
+
+        if not name:
+            flash('Tab name is required.')
+            return redirect(url_for('admin_tabs'))
+
+        tab = CustomTab(name=name, order=int(order))
+        db.session.add(tab)
+        db.session.commit()
+        flash('Tab created.')
+        return redirect(url_for('admin_tabs'))
+
+    tabs = CustomTab.query.order_by(CustomTab.order).all()
+    return render_template('admin_tabs.html', tabs=tabs)
+
+
+@app.route('/admin/tabs/<int:tab_id>/delete', methods=['POST'])
+@login_required
+def admin_tabs_delete(tab_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    tab = CustomTab.query.get_or_404(tab_id)
+    db.session.delete(tab)
+    db.session.commit()
+    flash('Tab deleted.')
+    return redirect(url_for('admin_tabs'))
 
 # -------------------------------------------------------------------------
 # TIMELINE
@@ -1011,4 +1146,3 @@ logger.info("SUPER-MEGA app bootstrap complete.")
 # -------------------------------------------------------------------------
 if __name__ == '__main__':
     app.run(debug=True)
-  

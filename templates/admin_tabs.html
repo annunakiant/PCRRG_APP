@@ -1,29 +1,39 @@
 ﻿{% extends "base.html" %}
-{% block title %}Custom Tabs{% endblock %}
-{% block subtitle %}Create CompanyCam-style sections{% endblock %}
 {% block content %}
-<div class="card">
-  <div class="card-title">Create New Tab</div>
-  <form method="post" style="font-size:0.85rem;">
-    <input name="name" placeholder="Tab name (e.g. Mitigation, Rebuild)" required
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
-    <input name="order" placeholder="Order (0,1,2…)" type="number"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
-    <button class="btn btn-primary" type="submit">Add Tab</button>
-  </form>
-</div>
-<div class="card" style="margin-top:1.5rem;">
-  <div class="card-title">Existing Tabs</div>
-  <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+<h2>Custom Tabs</h2>
+
+<form method="post" class="mb-3">
+  <div class="mb-2">
+    <label>Name</label>
+    <input type="text" name="name" class="form-control" required>
+  </div>
+  <div class="mb-2">
+    <label>Order</label>
+    <input type="number" name="order" class="form-control" value="0">
+  </div>
+  <button class="btn btn-primary btn-sm">Add Tab</button>
+</form>
+
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Order</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
     {% for t in tabs %}
-    <li style="margin-bottom:0.5rem;">
-      <strong>{{ t.name }}</strong> (order {{ t.order }})
-      <a href="{{ url_for('admin_fields', tab_id=t.id) }}" class="btn btn-outline" style="padding:0.2rem 0.5rem;font-size:0.75rem;">Fields</a>
-      <form method="post" action="{{ url_for('admin_tab_delete', tab_id=t.id) }}" style="display:inline;">
-        <button class="btn btn-outline" style="padding:0.2rem 0.5rem;font-size:0.75rem;">Delete</button>
-      </form>
-    </li>
+    <tr>
+      <td>{{ t.name }}</td>
+      <td>{{ t.order }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin_tabs_delete', tab_id=t.id) }}" style="display:inline;">
+          <button class="btn btn-sm btn-danger" onclick="return confirm('Delete tab?');">Delete</button>
+        </form>
+      </td>
+    </tr>
     {% endfor %}
-  </ul>
-</div>
+  </tbody>
+</table>
 {% endblock %}
