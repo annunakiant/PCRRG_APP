@@ -83,14 +83,9 @@ class Job(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime)
 
-    photos = db.relationship('Photo', backref='job', lazy='dynamic')
-    packout_items = db.relationship('PackoutItem', backref='job', lazy='dynamic')
-    contracts = db.relationship('JobContract', backref='job', lazy='dynamic')
-    custom_values = db.relationship('CustomFieldValue', backref='job', lazy='dynamic')
-    tasks = db.relationship('JobTask', backref='job', lazy='dynamic')
+                    
 
-
-# DUPLICATE REMOVED: class Photo(db.Model):
+# DUPLICATE REMOVED: # REMOVED DUPLICATE Photo
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -126,7 +121,7 @@ class InventoryItem(db.Model):
     filename = db.Column(db.String(255), nullable=False)
 
 
-class JobContract(db.Model):
+# REMOVED DUPLICATE JobContract
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'))
@@ -155,7 +150,7 @@ class CustomField(db.Model):
     tab = db.relationship('CustomTab', backref='fields')
 
 
-class CustomFieldValue(db.Model):
+# REMOVED DUPLICATE CustomFieldValue
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     field_id = db.Column(db.Integer, db.ForeignKey('custom_field.id'), nullable=False)
@@ -187,7 +182,7 @@ class JobTaskTemplate(db.Model):
     service_type = db.Column(db.String(100))  # optional: link to service type
 
 
-class JobTask(db.Model):
+# REMOVED DUPLICATE JobTask
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     template_id = db.Column(db.Integer, db.ForeignKey('job_task_template.id'))
@@ -1239,7 +1234,7 @@ from flask import jsonify
     job = db.relationship('Job', backref=db.backref('packout_items', lazy=True))
 
 
-# DUPLICATE REMOVED: class PackoutPhoto(db.Model):
+# DUPLICATE REMOVED: # REMOVED DUPLICATE PackoutPhoto
     id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey('packout_item.id'), nullable=False)
     url = db.Column(db.String(512))
@@ -1273,7 +1268,7 @@ from flask import jsonify
     job = db.relationship('Job', backref=db.backref('rooms', lazy=True))
 
 
-# DUPLICATE REMOVED: class Photo(db.Model):
+# DUPLICATE REMOVED: # REMOVED DUPLICATE Photo
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
     url = db.Column(db.String(512))
@@ -1631,7 +1626,7 @@ from flask import jsonify
     job = db.relationship('Job', backref=db.backref('packout_items', lazy=True))
 
 
-# DUPLICATE REMOVED: class PackoutPhoto(db.Model):
+# DUPLICATE REMOVED: # REMOVED DUPLICATE PackoutPhoto
     id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey('packout_item.id'), nullable=False)
     url = db.Column(db.String(512))
@@ -1665,7 +1660,7 @@ from flask import jsonify
     job = db.relationship('Job', backref=db.backref('rooms', lazy=True))
 
 
-# DUPLICATE REMOVED: class Photo(db.Model):
+# DUPLICATE REMOVED: # REMOVED DUPLICATE Photo
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
     url = db.Column(db.String(512))
@@ -2161,3 +2156,6 @@ def toggle_task(checklist_id, task_id):
         'completed_by': task.completed_by or '',
         'completed_at': task.completed_at.strftime('%Y-%m-%d %H:%M') if task.completed_at else ''
     })
+
+
+
