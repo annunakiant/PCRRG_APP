@@ -1152,3 +1152,9 @@ if __name__ == '__main__':
 # -------------------------------------------------------------------------
 from extensions.advanced_admin import advanced_admin_bp
 app.register_blueprint(advanced_admin_bp)
+# -------------------------------------------------------------------------
+# PLUS PACK BLUEPRINT
+# -------------------------------------------------------------------------
+from plus import plus_bp
+app.register_blueprint(plus_bp, url_prefix='/plus')
+
