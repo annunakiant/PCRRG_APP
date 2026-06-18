@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import logging
 from datetime import datetime
@@ -1158,3 +1158,8 @@ app.register_blueprint(advanced_admin_bp)
 from plus import plus_bp
 app.register_blueprint(plus_bp, url_prefix='/plus')
 
+# -------------------------------------------------------------------------
+# THEME ENGINE 2.0 BLUEPRINT
+# -------------------------------------------------------------------------
+from theme_engine import theme_bp
+app.register_blueprint(theme_bp, url_prefix='/theme')

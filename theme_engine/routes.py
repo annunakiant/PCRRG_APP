@@ -1,4 +1,4 @@
-﻿import os, json
+import os, json
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from app import app, is_admin
@@ -24,7 +24,7 @@ DEFAULT_THEME = {
     "background_image": ""
 }
 
-def load_theme():
+def theme_admin():
     if not os.path.exists(THEME_FILE):
         with open(THEME_FILE, 'w', encoding='utf-8') as f:
             json.dump(DEFAULT_THEME, f, indent=2)
@@ -32,7 +32,7 @@ def load_theme():
     with open(THEME_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def save_theme(cfg):
+def theme_admin(cfg):
     with open(THEME_FILE, 'w', encoding='utf-8') as f:
         json.dump(cfg, f, indent=2)
 

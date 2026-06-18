@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang='en'>
 <head>
   <meta charset='utf-8'>
@@ -90,7 +90,7 @@
   <a href='{{ url_for('admin_home') }}' class='{% if "admin" in request.endpoint %}active{% endif %}'>Admin</a>
   <a href='{{ url_for('admin_task_templates') }}' class='{% if "task" in request.endpoint %}active{% endif %}'>Tasks</a>
   <a href='{{ url_for('manage_contracts') }}' class='{% if "contract" in request.endpoint %}active{% endif %}'>Contracts</a>
-  <a href='{{ url_for('theme.theme_admin') }}'>Theme Engine</a>
+  <a href='{{ url_for("theme.theme_admin") }}'>Theme Engine</a>
 </div>
 
 <div class='container-fluid mt-3'>
