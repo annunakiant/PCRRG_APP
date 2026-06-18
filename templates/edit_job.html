@@ -1,35 +1,20 @@
-﻿{% extends "base.html" %}
-{% block title %}Edit Job{% endblock %}
-{% block subtitle %}{{ job.job_number }} – {{ job.title }}{% endblock %}
+﻿{% extends 'base.html' %}
 {% block content %}
-<div class="card" style="max-width:640px;margin:0 auto;">
-  <div class="card-title">Job Details</div>
-  <form method="post" style="font-size:0.85rem;">
-    <label>Job Number</label>
-    <input name="job_number" value="{{ job.job_number }}" required
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Title</label>
-    <input name="title" value="{{ job.title }}"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Client Name</label>
-    <input name="client_name" value="{{ job.client_name }}"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Address</label>
-    <input name="address" value="{{ job.address }}"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Service Type</label>
-    <input name="service_type" value="{{ job.service_type }}"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+<h2>Edit Job {{ job.job_number }}</h2>
+<form method="post">
+  <div class="mb-2"><label>Job Number</label><input name="job_number" class="form-control" value="{{ job.job_number }}"></div>
+  <div class="mb-2"><label>Title</label><input name="title" class="form-control" value="{{ job.title }}"></div>
+  <div class="mb-2"><label>Client Name</label><input name="client_name" class="form-control" value="{{ job.client_name }}"></div>
+  <div class="mb-2"><label>Address</label><input name="address" class="form-control" value="{{ job.address }}"></div>
+  <div class="mb-2"><label>Service Type</label><input name="service_type" class="form-control" value="{{ job.service_type }}"></div>
+  <div class="mb-2">
     <label>Status</label>
-    <select name="status"
-            style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-      <option value="Open" {% if job.status == 'Open' %}selected{% endif %}>Open</option>
-      <option value="In Progress" {% if job.status == 'In Progress' %}selected{% endif %}>In Progress</option>
-      <option value="Closed" {% if job.status == 'Closed' %}selected{% endif %}>Closed</option>
-      <option value="Archived" {% if job.status == 'Archived' %}selected{% endif %}>Archived</option>
+    <select name="status" class="form-select">
+      <option value="open" {% if job.status=='open' %}selected{% endif %}>Open</option>
+      <option value="closed" {% if job.status=='closed' %}selected{% endif %}>Closed</option>
+      <option value="archived" {% if job.status=='archived' %}selected{% endif %}>Archived</option>
     </select>
-    <button class="btn btn-primary" type="submit">Save Changes</button>
-    <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn btn-outline" style="margin-left:0.5rem;">Back</a>
-  </form>
-</div>
+  </div>
+  <button class="btn btn-primary">Save</button>
+</form>
 {% endblock %}

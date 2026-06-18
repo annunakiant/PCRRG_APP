@@ -1,23 +1,9 @@
-﻿{% extends "base.html" %}
-{% block title %}Login{% endblock %}
-{% block subtitle %}Secure employee + admin access{% endblock %}
+﻿{% extends 'base.html' %}
 {% block content %}
-<div class="card" style="max-width:420px;margin:0 auto;">
-  <div class="card-title">Sign in</div>
-  <div class="card-sub">Use your username and 4-digit PIN.</div>
-  <form method="post">
-    <div style="margin-bottom:0.75rem;">
-      <label>Username</label><br>
-      <input name="username" required style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;">
-    </div>
-    <div style="margin-bottom:0.75rem;">
-      <label>PIN</label><br>
-      <input name="pin" required maxlength="4" style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;">
-    </div>
-    <button class="btn btn-primary" type="submit" style="width:100%;">Login</button>
-  </form>
-  <div style="margin-top:0.75rem;font-size:0.8rem;color:#9ca3af;">
-    Default admin: <strong>admin / 1234</strong>
-  </div>
-</div>
+<h2>Login</h2>
+<form method="post">
+  <div class="mb-2"><label>Username</label><input name="username" class="form-control"></div>
+  <div class="mb-2"><label>PIN</label><input name="pin" class="form-control" type="password"></div>
+  <button class="btn btn-primary">Login</button>
+</form>
 {% endblock %}

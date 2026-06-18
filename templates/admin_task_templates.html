@@ -1,37 +1,18 @@
-﻿{% extends "base.html" %}
-{% block title %}Task Templates{% endblock %}
-{% block subtitle %}Reusable checklists for jobs{% endblock %}
-
+﻿{% extends 'base.html' %}
 {% block content %}
-<div class="card">
-  <div class="card-title">Create Template</div>
-  <form method="post" style="font-size:0.85rem;">
-    <label>Name</label>
-    <input name="name" required
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Tasks (one per line)</label>
-    <textarea name="items" rows="6"
-              style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;"></textarea>
-    <button class="btn btn-primary" type="submit" style="margin-top:0.5rem;">Create Template</button>
-  </form>
-</div>
-
-<div class="card" style="margin-top:1.5rem;">
-  <div class="card-title">Existing Templates</div>
-  <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+<h2>Task Templates</h2>
+<form method="post" class="mb-3">
+  <div class="mb-2"><label>Name</label><input name="name" class="form-control" required></div>
+  <div class="mb-2"><label>Description</label><input name="description" class="form-control"></div>
+  <div class="mb-2"><label>Service Type</label><input name="service_type" class="form-control"></div>
+  <button class="btn btn-primary btn-sm">Add Template</button>
+</form>
+<table class="table table-sm">
+  <thead><tr><th>Name</th><th>Service</th></tr></thead>
+  <tbody>
     {% for t in templates %}
-    <li style="margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid #1f2937;">
-      <strong>{{ t.name }}</strong>
-      <ul style="margin-top:0.5rem;margin-left:1rem;">
-        {% for item in t.items %}
-        <li style="color:#9ca3af;">• {{ item }}</li>
-        {% endfor %}
-      </ul>
-      <form method="post" action="{{ url_for('admin_task_template_delete', template_id=t.id) }}" style="margin-top:0.5rem;">
-        <button class="btn btn-outline" style="padding:0.2rem 0.5rem;font-size:0.75rem;">Delete</button>
-      </form>
-    </li>
+    <tr><td>{{ t.name }}</td><td>{{ t.service_type }}</td></tr>
     {% endfor %}
-  </ul>
-</div>
+  </tbody>
+</table>
 {% endblock %}

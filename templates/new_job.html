@@ -1,33 +1,12 @@
-﻿{% extends "base.html" %}
-{% block title %}New Job{% endblock %}
-{% block subtitle %}Create a CompanyCam-style project{% endblock %}
+﻿{% extends 'base.html' %}
 {% block content %}
-<div class="card" style="max-width:640px;margin:0 auto;">
-  <div class="card-title">Job Details</div>
-  <form method="post" style="font-size:0.85rem;">
-    <label>Job Number</label>
-    <input name="job_number" placeholder="e.g. PCR-2026-001" required
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Title</label>
-    <input name="title" placeholder="e.g. Water Loss – Kitchen"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Client Name</label>
-    <input name="client_name"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Address</label>
-    <input name="address"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Service Type</label>
-    <input name="service_type" placeholder="Mitigation, Rebuild, Contents..."
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Status</label>
-    <select name="status"
-            style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-      <option value="Open">Open</option>
-      <option value="In Progress">In Progress</option>
-      <option value="Closed">Closed</option>
-    </select>
-    <button class="btn btn-primary" type="submit">Create Job</button>
-  </form>
-</div>
+<h2>New Job</h2>
+<form method="post">
+  <div class="mb-2"><label>Job Number</label><input name="job_number" class="form-control"></div>
+  <div class="mb-2"><label>Title</label><input name="title" class="form-control"></div>
+  <div class="mb-2"><label>Client Name</label><input name="client_name" class="form-control"></div>
+  <div class="mb-2"><label>Address</label><input name="address" class="form-control"></div>
+  <div class="mb-2"><label>Service Type</label><input name="service_type" class="form-control"></div>
+  <button class="btn btn-primary">Create</button>
+</form>
 {% endblock %}
