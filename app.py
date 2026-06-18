@@ -1169,3 +1169,14 @@ from theme_engine.routes import load_theme
 @app.context_processor
 def inject_theme():
     return {"t": load_theme()}
+# -------------------------------------------------------------------------
+# THEME ENGINE GLOBAL INJECTOR (FINAL FIX)
+# -------------------------------------------------------------------------
+from theme_engine.routes import load_theme
+
+@app.context_processor
+def inject_theme():
+    try:
+        return {"t": load_theme()}
+    except:
+        return {"t": {}}
