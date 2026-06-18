@@ -1180,3 +1180,5 @@ def inject_theme():
         return {"t": load_theme()}
     except:
         return {"t": {}}
+from routes_templates import templates_bp
+app.register_blueprint(templates_bp)
