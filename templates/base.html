@@ -5,33 +5,24 @@
   <title>PCRRG FieldOps</title>
   <meta name='viewport' content='width=device-width, initial-scale=1'>
 
-  <!-- Modern CompanyCam-style font -->
   <link href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' rel='stylesheet'>
-
-  <!-- Bootstrap -->
   <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
 
-  <style>
-    :root {
-      --primary: {{ theme.primary_color }};
-      --secondary: {{ theme.secondary_color }};
-      --font-family: {{ plus_ui.font_family if plus_ui else 'Inter, system-ui' }};
-      --font-size: {{ plus_ui.font_size if plus_ui else '15px' }};
-    }
+  {% set t = load_theme() if load_theme else {} %}
 
+  <style>
     body {
-      font-family: var(--font-family);
-      font-size: var(--font-size);
-      background: #111;
+      background: {{ t.background }};
       color: #e5e5e5;
-      {% if plus_ui and plus_ui.background_image_url %}
-      background-image: url('{{ plus_ui.background_image_url }}');
+      font-family: {{ t.font_family }};
+      font-size: {{ t.font_size }};
+      {% if t.background_image %}
+      background-image: url('{{ t.background_image }}');
       background-size: cover;
       background-position: center;
       {% endif %}
     }
 
-    /* CompanyCam dark top bar */
     .topbar {
       background: #000;
       padding: 0.75rem 1rem;
@@ -40,82 +31,39 @@
       justify-content: space-between;
       border-bottom: 1px solid #222;
     }
-    .topbar-logo {
-      display: flex;
-      align-items: center;
-      font-weight: 600;
-      font-size: 1.25rem;
-      color: #fff;
-    }
-    .topbar-logo img {
-      height: 36px;
-      margin-right: 10px;
-      border-radius: 6px;
-    }
 
-    /* Dark nav bar */
     .app-nav {
       background: #0d0d0d;
       border-bottom: 1px solid #222;
       padding: 0.5rem 1rem;
       display: flex;
       gap: 1rem;
-      font-weight: 500;
     }
+
     .app-nav a {
       color: #aaa;
       text-decoration: none;
       padding: 0.4rem 0.75rem;
       border-radius: 6px;
     }
+
     .app-nav a.active {
-      background: var(--primary);
+      background: {{ t.primary }};
       color: #fff !important;
     }
 
-    /* Dark cards */
     .cc-card {
-      background: #1a1a1a;
+      background: {{ t.card }};
+      border: 1px solid {{ t.card_border }};
       border-radius: 12px;
       padding: 1.25rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
       margin-bottom: 1rem;
-      border: 1px solid #222;
+      backdrop-filter: blur(10px);
     }
 
-    /* Buttons */
     .btn-primary {
-      background-color: var(--primary) !important;
-      border-color: var(--primary) !important;
-    }
-    .btn-outline-primary {
-      border-color: var(--primary) !important;
-      color: var(--primary) !important;
-    }
-
-    /* Inputs */
-    .form-control, .form-select {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      color: #eee;
-    }
-    .form-control:focus, .form-select:focus {
-      background: #1a1a1a;
-      border-color: var(--primary);
-      color: #fff;
-      box-shadow: none;
-    }
-
-    /* Tables */
-    table {
-      color: #ddd;
-    }
-    table thead {
-      background: #000;
-    }
-    table tbody tr {
-      background: #1a1a1a;
-      border-bottom: 1px solid #222;
+      background-color: {{ t.primary }} !important;
+      border-color: {{ t.primary }} !important;
     }
   </style>
 </head>
@@ -125,7 +73,7 @@
 <div class='topbar'>
   <div class='topbar-logo'>
     {% if theme.logo_url %}
-      <img src='{{ theme.logo_url }}'>
+      <img src='{{ theme.logo_url }}' style='height:36px; margin-right:10px; border-radius:6px;'>
     {% endif %}
     PCRRG FieldOps
   </div>
@@ -142,17 +90,10 @@
   <a href='{{ url_for('admin_home') }}' class='{% if "admin" in request.endpoint %}active{% endif %}'>Admin</a>
   <a href='{{ url_for('admin_task_templates') }}' class='{% if "task" in request.endpoint %}active{% endif %}'>Tasks</a>
   <a href='{{ url_for('manage_contracts') }}' class='{% if "contract" in request.endpoint %}active{% endif %}'>Contracts</a>
+  <a href='{{ url_for('theme.theme_admin') }}'>Theme Engine</a>
 </div>
 
 <div class='container-fluid mt-3'>
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div class='alert alert-info'>
-        {% for m in messages %}<div>{{ m }}</div>{% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
-
   {% block content %}{% endblock %}
 </div>
 
