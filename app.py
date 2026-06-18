@@ -1146,3 +1146,9 @@ logger.info("SUPER-MEGA app bootstrap complete.")
 # -------------------------------------------------------------------------
 if __name__ == '__main__':
     app.run(debug=True)
+
+# -------------------------------------------------------------------------
+# BLUEPRINT REGISTRATION (ADVANCED ADMIN)
+# -------------------------------------------------------------------------
+from extensions.advanced_admin import advanced_admin_bp
+app.register_blueprint(advanced_admin_bp)
