@@ -12,21 +12,33 @@
   <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
 
   <style>
+    /* COLOR SYSTEM — Dark + Teal (Soft Glow) */
+    :root {
+      --primary: #2ec4b6;        /* Soft teal */
+      --primary-soft: #3fd4c6;   /* Hover */
+      --primary-glow: rgba(46,196,182,0.35); /* Soft glow */
+      --bg: #0e0f10;             /* Matte dark */
+      --bg2: #141517;            /* Card dark */
+      --border: #1f2023;         /* Subtle border */
+      --text: #e6e6e6;           /* Light text */
+      --text-soft: #aeb4b8;      /* Soft text */
+    }
+
     body {
-      background: #0f0f11;
-      color: #e5e5e5;
+      background: var(--bg);
+      color: var(--text);
       font-family: Inter, system-ui;
       font-size: 15px;
     }
 
-    /* Top bar */
+    /* TOP BAR */
     .topbar {
-      background: #0a0a0c;
+      background: #0b0c0d;
       padding: 0.75rem 1rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid #1c1c1f;
+      border-bottom: 1px solid var(--border);
     }
 
     .topbar-logo {
@@ -34,7 +46,7 @@
       align-items: center;
       font-weight: 600;
       font-size: 1.25rem;
-      color: #fff;
+      color: var(--text);
     }
 
     .topbar-logo img {
@@ -43,10 +55,10 @@
       border-radius: 6px;
     }
 
-    /* Navigation */
+    /* NAVIGATION */
     .app-nav {
-      background: #111114;
-      border-bottom: 1px solid #1c1c1f;
+      background: #111214;
+      border-bottom: 1px solid var(--border);
       padding: 0.5rem 1rem;
       display: flex;
       gap: 1rem;
@@ -54,7 +66,7 @@
     }
 
     .app-nav a {
-      color: #9aa0a6;
+      color: var(--text-soft);
       text-decoration: none;
       padding: 0.45rem 0.85rem;
       border-radius: 8px;
@@ -62,77 +74,81 @@
     }
 
     .app-nav a:hover {
-      background: #1a1a1d;
-      color: #dfe3e6;
+      background: #1a1b1d;
+      color: var(--text);
     }
 
     .app-nav a.active {
-      background: #1e2a38;
-      color: #8cc0ff !important;
-      border: 1px solid #2d3f52;
+      background: rgba(46,196,182,0.15);
+      color: var(--primary) !important;
+      border: 1px solid rgba(46,196,182,0.35);
+      box-shadow: 0 0 8px var(--primary-glow);
     }
 
-    /* Cards */
+    /* CARDS */
     .cc-card {
-      background: #141416;
-      border: 1px solid #1f1f22;
+      background: var(--bg2);
+      border: 1px solid var(--border);
       border-radius: 12px;
       padding: 1.25rem;
       margin-bottom: 1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     }
 
-    /* Buttons */
+    /* BUTTONS — Soft Glow Teal */
     .btn-primary {
-      background-color: #4a90e2 !important;
-      border-color: #4a90e2 !important;
+      background-color: var(--primary) !important;
+      border-color: var(--primary) !important;
       font-weight: 500;
       border-radius: 8px;
+      box-shadow: 0 0 8px var(--primary-glow);
+      transition: 0.2s;
     }
 
     .btn-primary:hover {
-      background-color: #6ab0ff !important;
-      border-color: #6ab0ff !important;
+      background-color: var(--primary-soft) !important;
+      border-color: var(--primary-soft) !important;
+      box-shadow: 0 0 12px var(--primary-glow);
     }
 
     .btn-outline-primary {
-      border-color: #4a90e2 !important;
-      color: #4a90e2 !important;
+      border-color: var(--primary) !important;
+      color: var(--primary) !important;
       border-radius: 8px;
     }
 
     .btn-outline-primary:hover {
-      background: #4a90e2 !important;
+      background: var(--primary) !important;
       color: #fff !important;
     }
 
-    /* Inputs */
+    /* INPUTS */
     .form-control, .form-select {
-      background: #1a1a1d;
-      border: 1px solid #2a2a2e;
-      color: #e5e5e5;
+      background: #1a1b1d;
+      border: 1px solid #2a2b2e;
+      color: var(--text);
       border-radius: 8px;
     }
 
     .form-control:focus, .form-select:focus {
-      background: #1a1a1d;
-      border-color: #4a90e2;
+      background: #1a1b1d;
+      border-color: var(--primary);
       color: #fff;
-      box-shadow: none;
+      box-shadow: 0 0 8px var(--primary-glow);
     }
 
-    /* Tables */
+    /* TABLES */
     table {
-      color: #d0d0d0;
+      color: var(--text);
     }
 
     table thead {
-      background: #0d0d10;
+      background: #0d0e10;
     }
 
     table tbody tr {
-      background: #141416;
-      border-bottom: 1px solid #1f1f22;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
     }
   </style>
 </head>
