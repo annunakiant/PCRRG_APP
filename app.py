@@ -1163,3 +1163,9 @@ app.register_blueprint(plus_bp, url_prefix='/plus')
 # -------------------------------------------------------------------------
 from theme_engine import theme_bp
 app.register_blueprint(theme_bp, url_prefix='/theme')
+# Inject Theme Engine config into all templates
+from theme_engine.routes import load_theme
+
+@app.context_processor
+def inject_theme():
+    return {"t": load_theme()}
