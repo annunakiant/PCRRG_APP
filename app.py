@@ -1,4 +1,4 @@
-﻿import os
+  import os
 import json
 import logging
 from datetime import datetime
@@ -45,26 +45,196 @@ db = SQLAlchemy(app)
 # MODELS
 # -------------------------------------------------------------------------
 
-[MODELS_INSERTED_HERE]
+
+class ThemeSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    primary_color = db.Column(db.String(20), default="#1E88E5")
+    secondary_color = db.Column(db.String(20), default="#FFC107")
+    logo_url = db.Column(db.String(255), default="/static/logo.png")
+
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    pin = db.Column(db.String(16), nullable=False)
+    name = db.Column(db.String(128))
+    phone = db.Column(db.String(32))
+    email = db.Column(db.String(128))
+    role = db.Column(db.String(32), default="tech")
+
+    def __repr__(self):
+        return f"<User {self.username}>"
+
+    @property
+    def is_admin(self):
+        return self.role == "admin"
+
+
+class CustomTab(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), nullable=False)
+    order = db.Column(db.Integer, default=0)
+
+
+class Job(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_number = db.Column(db.String(64), unique=True)
+    title = db.Column(db.String(128))
+    client_name = db.Column(db.String(128))
+    address = db.Column(db.String(256))
+    service_type = db.Column(db.String(64))
+    status = db.Column(db.String(32), default="open")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    closed_at = db.Column(db.DateTime)
+
+    photos = db.relationship("Photo", backref="job", lazy="dynamic")
+    packout_items = db.relationship("PackoutItem", backref="job", lazy="dynamic")
+    contracts = db.relationship("JobContract", backref="job", lazy="dynamic")
+    tasks = db.relationship("JobTask", backref="job", lazy="dynamic")
+    custom_values = db.relationship("CustomValue", backref="job", lazy="dynamic")
+
+
+class InventoryItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    sku = db.Column(db.String(64))
+    barcode = db.Column(db.String(64))
+    quantity = db.Column(db.Integer, default=0)
+    location = db.Column(db.String(128))
+    notes = db.Column(db.Text)
+
+
+class EmployeeSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"))
+    clock_in_at = db.Column(db.DateTime, default=datetime.utcnow)
+    clock_out_at = db.Column(db.DateTime)
+    clock_in_lat = db.Column(db.Float)
+    clock_in_lon = db.Column(db.Float)
+
+
+class Photo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    category = db.Column(db.String(64))
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class PackoutItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
+    name = db.Column(db.String(128), nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    location = db.Column(db.String(128))
+    notes = db.Column(db.Text)
+
+
+class ContractTemplate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+
+
+class JobContract(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey("contract_template.id"), nullable=False)
+    signed = db.Column(db.Boolean, default=False)
+    signed_at = db.Column(db.DateTime)
+    signer_name = db.Column(db.String(128))
+    signer_email = db.Column(db.String(128))
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+
+    template = db.relationship("ContractTemplate")
+
+
+class JobTaskTemplate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    description = db.Column(db.Text)
+    service_type = db.Column(db.String(64))
+
+
+class JobTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey("job_task_template.id"))
+    label = db.Column(db.String(128), nullable=False)
+    completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime)
+    completed_by_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+
+    template = db.relationship("JobTaskTemplate")
+    completed_by = db.relationship("User")
+
+
+class CustomField(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tab_id = db.Column(db.Integer, db.ForeignKey("custom_tab.id"))
+    label = db.Column(db.String(128), nullable=False)
+    field_type = db.Column(db.String(32), default="text")
+
+    tab = db.relationship("CustomTab")
+
+
+class CustomValue(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
+    field_id = db.Column(db.Integer, db.ForeignKey("custom_field.id"), nullable=False)
+    value = db.Column(db.Text)
+
+    field = db.relationship("CustomField")
+
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 # -------------------------------------------------------------------------
-# MODELS
+# SUPER-MEGA BOOTSTRAP
 # -------------------------------------------------------------------------
 
-# [MODELS_INSERTED_HERE]
+
+def supermega_bootstrap():
+    logger.info("Running SUPER-MEGA DB bootstrap...")
+    db.create_all()
+    logger.info("DB tables created/verified.")
+
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        admin = User(
+            username='admin',
+            pin='1234',
+            name='Default Admin',
+            role='admin'
+        )
+        db.session.add(admin)
+        db.session.commit()
+        logger.info("Default admin user created (admin / 1234).")
+
+    logger.info("SUPER-MEGA app bootstrap complete.")
+
+
+with app.app_context():
+    supermega_bootstrap()
 
 # -------------------------------------------------------------------------
 # LOGIN + GLOBALS
 # -------------------------------------------------------------------------
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 
 def is_admin():
-    return current_user.is_authenticated and current_user.is_admin()
+    return current_user.is_authenticated and current_user.is_admin
 
 
 @app.context_processor
@@ -88,6 +258,8 @@ def inject_globals():
 # -------------------------------------------------------------------------
 # EMAIL
 # -------------------------------------------------------------------------
+
+
 def send_job_email(job, to_email, subject, body):
     smtp_host = os.environ.get('SMTP_HOST')
     smtp_port = int(os.environ.get('SMTP_PORT', '587'))
@@ -117,6 +289,8 @@ def send_job_email(job, to_email, subject, body):
 # -------------------------------------------------------------------------
 # AUTH
 # -------------------------------------------------------------------------
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -143,6 +317,8 @@ def logout():
 # -------------------------------------------------------------------------
 # DASHBOARD
 # -------------------------------------------------------------------------
+
+
 @app.route('/')
 @login_required
 def dashboard():
@@ -165,6 +341,7 @@ def dashboard():
         recent_jobs=recent_jobs,
         active_sessions=active_sessions
     )
+
 
 @app.route('/employee/clock-in', methods=['POST'])
 @login_required
@@ -202,6 +379,8 @@ def employee_clock_out():
 # -------------------------------------------------------------------------
 # ADMIN HOME + THEME + USERS + TABS
 # -------------------------------------------------------------------------
+
+
 @app.route('/admin')
 @login_required
 def admin_home():
@@ -390,6 +569,8 @@ def admin_tabs_delete(tab_id):
 # -------------------------------------------------------------------------
 # TIMELINE
 # -------------------------------------------------------------------------
+
+
 @app.route('/jobs/<int:job_id>/timeline')
 @login_required
 def job_timeline(job_id):
@@ -449,6 +630,8 @@ def job_timeline(job_id):
 # -------------------------------------------------------------------------
 # JOB VIEW + MAP DATA
 # -------------------------------------------------------------------------
+
+
 @app.route('/jobs/<int:job_id>')
 @login_required
 def view_job(job_id):
@@ -513,6 +696,8 @@ def job_map_data(job_id):
 # -------------------------------------------------------------------------
 # JOB CRUD
 # -------------------------------------------------------------------------
+
+
 @app.route('/jobs/new', methods=['GET', 'POST'])
 @login_required
 def new_job():
@@ -579,6 +764,8 @@ def delete_job(job_id):
 # -------------------------------------------------------------------------
 # JOB TASK TEMPLATES + TASKS
 # -------------------------------------------------------------------------
+
+
 @app.route('/admin/task-templates', methods=['GET', 'POST'])
 @login_required
 def admin_task_templates():
@@ -648,6 +835,8 @@ def toggle_job_task(job_id, task_id):
 # -------------------------------------------------------------------------
 # PHOTO UPLOAD
 # -------------------------------------------------------------------------
+
+
 @app.route('/jobs/<int:job_id>/upload_photo', methods=['POST'])
 @login_required
 def upload_photo(job_id):
@@ -685,6 +874,8 @@ def upload_photo(job_id):
 # -------------------------------------------------------------------------
 # PACKOUT
 # -------------------------------------------------------------------------
+
+
 @app.route('/jobs/<int:job_id>/packout/add', methods=['POST'])
 @login_required
 def add_packout_item(job_id):
@@ -720,6 +911,8 @@ def delete_packout_item(job_id, item_id):
 # -------------------------------------------------------------------------
 # INVENTORY
 # -------------------------------------------------------------------------
+
+
 @app.route('/inventory')
 @login_required
 def inventory_list():
@@ -790,6 +983,8 @@ def inventory_delete(item_id):
 # -------------------------------------------------------------------------
 # CONTRACTS + E-SIGN
 # -------------------------------------------------------------------------
+
+
 @app.route('/contracts/templates', methods=['GET', 'POST'])
 @login_required
 def manage_contracts():
@@ -855,6 +1050,8 @@ def sign_contract(job_id, contract_id):
 # -------------------------------------------------------------------------
 # SHARE + ARCHIVE
 # -------------------------------------------------------------------------
+
+
 @app.route('/jobs/<int:job_id>/share', methods=['POST'])
 @login_required
 def share_job(job_id):
@@ -880,7 +1077,7 @@ def share_job(job_id):
 
     for item in packout_items:
         body_lines.append(
-            f"- {item.name} x{item.quantity} @ {item.location} ({item.notes})"
+            f"- {item.name} x{item.quantity} @ {item.location} ({item.notes or ''})"
         )
 
     body_lines.append("")
@@ -890,8 +1087,8 @@ def share_job(job_id):
         status = "Signed" if c.signed else "Pending"
         body_lines.append(f"- Template #{c.template_id} [{status}]")
 
-    body = "
-".join(body_lines)
+    body = "\n".join(body_lines)
+
     send_job_email(job, to_email, f"Job report: {job.job_number}", body)
     flash('Job report emailed (if email is configured).')
     return redirect(url_for('view_job', job_id=job.id))
@@ -905,218 +1102,16 @@ def archive_job(job_id):
         return redirect(url_for('view_job', job_id=job_id))
 
     job = Job.query.get_or_404(job_id)
-    os.makedirs(app.config['ARCHIVE_FOLDER'], exist_ok=True)
-    archive_path = os.path.join(app.config['ARCHIVE_FOLDER'], f"job_{job.id}.json")
-
-    data = {
-        'id': job.id,
-        'job_number': job.job_number,
-        'title': job.title,
-        'client_name': job.client_name,
-        'address': job.address,
-        'status': job.status,
-        'service_type': job.service_type,
-        'created_at': job.created_at.isoformat() if job.created_at else None,
-        'closed_at': job.closed_at.isoformat() if job.closed_at else None,
-        'photos': [
-            {
-                'filename': p.filename,
-                'category': p.category,
-                'uploaded_at': p.uploaded_at.isoformat() if p.uploaded_at else None,
-                'latitude': p.latitude,
-                'longitude': p.longitude
-            }
-            for p in job.photos.all()
-        ],
-        'packout_items': [
-            {
-                'name': i.name,
-                'quantity': i.quantity,
-                'location': i.location,
-                'notes': i.notes
-            }
-            for i in job.packout_items.all()
-        ],
-        'contracts': [
-            {
-                'template_id': c.template_id,
-                'signed': c.signed,
-                'signed_at': c.signed_at.isoformat() if c.signed_at else None,
-                'signer_name': c.signer_name,
-                'signer_email': c.signer_email,
-                'latitude': c.latitude,
-                'longitude': c.longitude
-            }
-            for c in job.contracts.all()
-        ],
-        'tasks': [
-            {
-                'label': t.label,
-                'completed': t.completed,
-                'completed_at': t.completed_at.isoformat() if t.completed_at else None,
-                'completed_by_id': t.completed_by_id
-            }
-            for t in job.tasks.all()
-        ]
-    }
-
-    with open(archive_path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2)
-
     job.status = 'archived'
     db.session.commit()
-    flash('Job archived and exported.')
+    flash('Job archived.')
     return redirect(url_for('view_job', job_id=job.id))
 
-# -------------------------------------------------------------------------
-# SUPER-MEGA BOOTSTRAP
-# -------------------------------------------------------------------------
-def supermega_bootstrap():
-    logger.info("Running SUPER-MEGA DB bootstrap...")
-    os.makedirs(os.path.join(BASE_DIR, 'data'), exist_ok=True)
-    os.makedirs(app.config['UPLOAD_FOLDER_PHOTOS'], exist_ok=True)
-    os.makedirs(app.config['UPLOAD_FOLDER_CONTRACTS'], exist_ok=True)
-    os.makedirs(app.config['UPLOAD_FOLDER_PACKOUT'], exist_ok=True)
-    os.makedirs(app.config['ARCHIVE_FOLDER'], exist_ok=True)
-
-    with app.app_context():
-        db.create_all()
-        logger.info("DB tables created/verified.")
-
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                pin='1234',
-                name='Admin',
-                role='admin'
-            )
-            db.session.add(admin)
-            db.session.commit()
-            logger.info("Default admin user created (admin / 1234).")
-        else:
-            logger.info("Admin user already exists.")
-
-
-supermega_bootstrap()
-logger.info("SUPER-MEGA app bootstrap complete.")
 
 # -------------------------------------------------------------------------
-# WSGI ENTRYPOINT
+# MAIN (for local dev)
 # -------------------------------------------------------------------------
+
 if __name__ == '__main__':
     app.run(debug=True)
-
-# -------------------------------------------------------------------------
-# BLUEPRINT REGISTRATION (ADVANCED ADMIN)
-# -------------------------------------------------------------------------
-from extensions.advanced_admin import advanced_admin_bp
-app.register_blueprint(advanced_admin_bp)
-# -------------------------------------------------------------------------
-# PLUS PACK BLUEPRINT
-# -------------------------------------------------------------------------
-from plus import plus_bp
-app.register_blueprint(plus_bp, url_prefix='/plus')
-
-# -------------------------------------------------------------------------
-# THEME ENGINE 2.0 BLUEPRINT
-# -------------------------------------------------------------------------
-from theme_engine import theme_bp
-app.register_blueprint(theme_bp, url_prefix='/theme')
-# Inject Theme Engine config into all templates
-from theme_engine.routes import load_theme
-
-@app.context_processor
-def inject_theme():
-    return {"t": load_theme()}
-# -------------------------------------------------------------------------
-# THEME ENGINE GLOBAL INJECTOR (FINAL FIX)
-# -------------------------------------------------------------------------
-from theme_engine.routes import load_theme
-
-@app.context_processor
-def inject_theme():
-    try:
-        return {"t": load_theme()}
-    except:
-        return {"t": {}}
-from routes_templates import templates_bp
-app.register_blueprint(templates_bp)
-
-
-@app.route('/jobs/<int:job_id>/packout', methods=['GET', 'POST'])
-@login_required
-def packout(job_id):
-    job = Job.query.get_or_404(job_id)
-    if request.method == 'POST':
-        name = request.form.get('name')
-        location = request.form.get('location')
-        quantity = int(request.form.get('quantity') or 1)
-        condition = request.form.get('condition')
-        photo = request.files.get('photo')
-
-        photo_path = None
-        if photo and photo.filename:
-            fname = secure_filename(photo.filename)
-            dest = os.path.join(app.config['UPLOAD_FOLDER'], f"packout_{job_id}_{int(datetime.datetime.utcnow().timestamp())}_{fname}")
-            photo.save(dest)
-            photo_path = os.path.relpath(dest, app.static_folder)
-
-        item = PackoutItem(
-            job_id=job.id,
-            name=name,
-            location=location,
-            quantity=quantity,
-            condition=condition,
-            photo_path=photo_path
-        )
-        db.session.add(item)
-        db.session.commit()
-        flash('Packout item added.', 'success')
-        return redirect(url_for('packout', job_id=job.id))
-
-    return render_template('packout_items.html', job=job)
-
-@app.route('/packout/<int:item_id>/delete', methods=['POST'])
-@login_required
-def packout_delete(item_id):
-    item = PackoutItem.query.get_or_404(item_id)
-    job_id = item.job_id
-    db.session.delete(item)
-    db.session.commit()
-    flash('Packout item deleted.', 'info')
-    return redirect(url_for('packout', job_id=job_id))
-
-
-
-
-
-class InventoryItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    sku = db.Column(db.String(100))
-    barcode = db.Column(db.String(255))
-    quantity = db.Column(db.Integer, default=0)
-    location = db.Column(db.String(255))
-    notes = db.Column(db.String(255))
-
-class EmployeeSession(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'))
-    clock_in_at = db.Column(db.DateTime, default=datetime.utcnow)
-    clock_out_at = db.Column(db.DateTime)
-    clock_in_lat = db.Column(db.Float)
-    clock_in_lon = db.Column(db.Float)
-    clock_out_lat = db.Column(db.Float)
-    clock_out_lon = db.Column(db.Float)
-    notes = db.Column(db.String(255))
-
-    user = db.relationship('User')
-
-
-
-
-
-
-
-
+         
