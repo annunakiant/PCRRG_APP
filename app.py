@@ -43,141 +43,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# -------------------------------------------------------------------------
-# MODELS
-# -------------------------------------------------------------------------
-class ThemeSettings(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    primary_color = db.Column(db.String(20), default="#1E88E5")
-    secondary_color = db.Column(db.String(20), default="#FFC107")
-    logo_url = db.Column(db.String(255), default="/static/logo.png")
-
-
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    pin = db.Column(db.String(4), nullable=False)
-    name = db.Column(db.String(255))
-    phone = db.Column(db.String(50))
-    email = db.Column(db.String(255))
-    role = db.Column(db.String(50), default='tech')  # 'tech', 'admin'
-
-    def is_admin(self):
-        return self.role == 'admin'
-
-
-class Job(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_number = db.Column(db.String(50), nullable=False)
-    title = db.Column(db.String(255), nullable=False)
-    client_name = db.Column(db.String(255))
-    address = db.Column(db.String(255))
-    status = db.Column(db.String(50), default='open')  # open, closed, archived
-    service_type = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    closed_at = db.Column(db.DateTime)
-
-    photos = db.relationship('Photo', backref='job', lazy='dynamic')
-    packout_items = db.relationship('PackoutItem', backref='job', lazy='dynamic')
-    contracts = db.relationship('JobContract', backref='job', lazy='dynamic')
-    custom_values = db.relationship('CustomFieldValue', backref='job', lazy='dynamic')
-    tasks = db.relationship('JobTask', backref='job', lazy='dynamic')
-    sessions = db.relationship('EmployeeSession', backref='job', lazy='dynamic')
-
-
-class Photo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    filename = db.Column(db.String(255), nullable=False)
-    category = db.Column(db.String(100))
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
-    latitude = db.Column(db.Float)
-    longitude = db.Column(db.Float)
-
-    user = db.relationship('User')
-
-
-(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    sku = db.Column(db.String(100))
-    barcode = db.Column(db.String(255))
-    quantity = db.Column(db.Integer, default=0)
-    location = db.Column(db.String(255))
-    notes = db.Column(db.String(255))\n    condition = db.Column(db.String(50))  # Salvageable, Retained, Damaged, Other\n    photo_path = db.Column(db.String(255))  # relative path to static image
-
-
-class ContractTemplate(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    filename = db.Column(db.String(255), nullable=False)
-
-
-class JobContract(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'))
-    signed = db.Column(db.Boolean, default=False)
-    signed_at = db.Column(db.DateTime)
-    signer_name = db.Column(db.String(255))
-    signer_email = db.Column(db.String(255))
-    latitude = db.Column(db.Float)
-    longitude = db.Column(db.Float)
-
-    template = db.relationship('ContractTemplate')
-
-
-class CustomTab(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    order = db.Column(db.Integer, default=0)
-
-
-class CustomField(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    tab_id = db.Column(db.Integer, db.ForeignKey('custom_tab.id'), nullable=False)
-    label = db.Column(db.String(255), nullable=False)
-    field_type = db.Column(db.String(50), nullable=False)  # text, number, select, checkbox
-    required = db.Column(db.Boolean, default=False)
-    options = db.Column(db.String(255))  # comma-separated for select
-
-    tab = db.relationship('CustomTab', backref='fields')
-
-
-class CustomFieldValue(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    field_id = db.Column(db.Integer, db.ForeignKey('custom_field.id'), nullable=False)
-    value = db.Column(db.String(255))
-
-    field = db.relationship('CustomField')
-
-
-('User')
-
-
-class JobTaskTemplate(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.String(255))
-    service_type = db.Column(db.String(100))
-
-
-class JobTask(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey('job_task_template.id'))
-    label = db.Column(db.String(255), nullable=False)
-    completed = db.Column(db.Boolean, default=False)
-    completed_at = db.Column(db.DateTime)
-    completed_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
-    template = db.relationship('JobTaskTemplate')
-    completed_by = db.relationship('User')
-
-# -------------------------------------------------------------------------
-# LOGIN + GLOBALS
+# -------------------------------------------------------------------------\n# MODELS\n# -------------------------------------------------------------------------\n\n# [MODELS_INSERTED_HERE]\n\n# -------------------------------------------------------------------------\n# LOGIN + GLOBALS
 # -------------------------------------------------------------------------
 @login_manager.user_loader
 def load_user(user_id):
@@ -1232,4 +1098,6 @@ class EmployeeSession(db.Model):
     notes = db.Column(db.String(255))
 
     user = db.relationship('User')
+
+
 
