@@ -1183,3 +1183,58 @@ def inject_theme():
 from routes_templates import templates_bp
 app.register_blueprint(templates_bp)
 
+# --- Packout items model ---
+class PackoutItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    location = db.Column(db.String(255), nullable=False)  # e.g. Kitchen, Bedroom
+    quantity = db.Column(db.Integer, default=1)
+    condition = db.Column(db.String(50), nullable=False)  # Salvageable, Retained, Damaged, Other
+    photo_path = db.Column(db.String(512))  # single main photo for now
+
+    job = db.relationship('Job', backref=db.backref('packout_items', lazy=True))
+
+# --- Packout routes ---
+@app.route('/jobs/<int:job_id>/packout', methods=['GET', 'POST'])
+@login_required
+def packout(job_id):
+    job = Job.query.get_or_404(job_id)
+    if request.method == 'POST':
+        name = request.form.get('name')
+        location = request.form.get('location')
+        quantity = int(request.form.get('quantity') or 1)
+        condition = request.form.get('condition')
+        photo = request.files.get('photo')
+
+        photo_path = None
+        if photo and photo.filename:
+            fname = secure_filename(photo.filename)
+            dest = os.path.join(app.config['UPLOAD_FOLDER'], f"packout_{job_id}_{int(datetime.datetime.utcnow().timestamp())}_{fname}")
+            photo.save(dest)
+            photo_path = os.path.relpath(dest, app.root_path)
+
+        item = PackoutItem(
+            job_id=job.id,
+            name=name,
+            location=location,
+            quantity=quantity,
+            condition=condition,
+            photo_path=photo_path
+        )
+        db.session.add(item)
+        db.session.commit()
+        flash('Packout item added.', 'success')
+        return redirect(url_for('packout', job_id=job.id))
+
+    return render_template('packout_items.html', job=job)
+
+@app.route('/packout/<int:item_id>/delete', methods=['POST'])
+@login_required
+def packout_delete(item_id):
+    item = PackoutItem.query.get_or_404(item_id)
+    job_id = item.job_id
+    db.session.delete(item)
+    db.session.commit()
+    flash('Packout item deleted.', 'info')
+    return redirect(url_for('packout', job_id=job_id))

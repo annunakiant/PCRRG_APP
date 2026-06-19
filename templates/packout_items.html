@@ -1,0 +1,67 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h2>Packout Items for Job {{ job.id }} - {{ job.client_name }}</h2>
+
+<form method="post" enctype="multipart/form-data">
+  <div>
+    <label>Item Name</label>
+    <input type="text" name="name" required>
+  </div>
+  <div>
+    <label>Location (Kitchen, Bedroom, etc.)</label>
+    <input type="text" name="location" required>
+  </div>
+  <div>
+    <label>Quantity</label>
+    <input type="number" name="quantity" min="1" value="1">
+  </div>
+  <div>
+    <label>Condition</label>
+    <select name="condition" required>
+      <option value="Salvageable">Salvageable</option>
+      <option value="Retained">Retained</option>
+      <option value="Damaged">Damaged</option>
+      <option value="Other">Other</option>
+    </select>
+  </div>
+  <div>
+    <label>Photo (optional)</label>
+    <input type="file" name="photo" accept="image/*" capture="environment">
+  </div>
+  <button type="submit">Add Item</button>
+</form>
+
+<hr>
+
+<table>
+  <tr>
+    <th>Item</th>
+    <th>Location</th>
+    <th>Qty</th>
+    <th>Condition</th>
+    <th>Photo</th>
+    <th>Actions</th>
+  </tr>
+  {% for item in job.packout_items %}
+  <tr>
+    <td>{{ item.name }}</td>
+    <td>{{ item.location }}</td>
+    <td>{{ item.quantity }}</td>
+    <td>{{ item.condition }}</td>
+    <td>
+      {% if item.photo_path %}
+        <img src="{{ url_for('static', filename=item.photo_path) }}" style="max-width:100px;">
+      {% else %}
+        No photo
+      {% endif %}
+    </td>
+    <td>
+      <form method="post" action="{{ url_for('packout_delete', item_id=item.id) }}">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}
