@@ -93,3 +93,6 @@ fetch("{{ url_for('job_map_data', job_id=job.id) }}")
   });
 </script>
 {% endblock %}
+
+<a href="{{ url_for('packout', job_id=job.id) }}" class="btn btn-outline-primary">Packout items</a>
+

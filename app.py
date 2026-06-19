@@ -104,7 +104,7 @@ class PackoutItem(db.Model):
     name = db.Column(db.String(255), nullable=False)
     quantity = db.Column(db.Integer, default=1)
     location = db.Column(db.String(255))
-    notes = db.Column(db.String(255))
+    notes = db.Column(db.String(255))\n    condition = db.Column(db.String(50))  # Salvageable, Retained, Damaged, Other\n    photo_path = db.Column(db.String(255))  # relative path to static image
 
 
 class InventoryItem(db.Model):
@@ -114,7 +114,7 @@ class InventoryItem(db.Model):
     barcode = db.Column(db.String(255))
     quantity = db.Column(db.Integer, default=0)
     location = db.Column(db.String(255))
-    notes = db.Column(db.String(255))
+    notes = db.Column(db.String(255))\n    condition = db.Column(db.String(50))  # Salvageable, Retained, Damaged, Other\n    photo_path = db.Column(db.String(255))  # relative path to static image
 
 
 class ContractTemplate(db.Model):
@@ -173,7 +173,7 @@ class EmployeeSession(db.Model):
     clock_in_lon = db.Column(db.Float)
     clock_out_lat = db.Column(db.Float)
     clock_out_lon = db.Column(db.Float)
-    notes = db.Column(db.String(255))
+    notes = db.Column(db.String(255))\n    condition = db.Column(db.String(50))  # Salvageable, Retained, Damaged, Other\n    photo_path = db.Column(db.String(255))  # relative path to static image
 
     user = db.relationship('User')
 
@@ -1200,7 +1200,7 @@ def packout(job_id):
             fname = secure_filename(photo.filename)
             dest = os.path.join(app.config['UPLOAD_FOLDER'], f"packout_{job_id}_{int(datetime.datetime.utcnow().timestamp())}_{fname}")
             photo.save(dest)
-            photo_path = os.path.relpath(dest, app.root_path)
+            photo_path = os.path.relpath(dest, app.static_folder)
 
         item = PackoutItem(
             job_id=job.id,
@@ -1226,4 +1226,6 @@ def packout_delete(item_id):
     db.session.commit()
     flash('Packout item deleted.', 'info')
     return redirect(url_for('packout', job_id=job_id))
+
+
 

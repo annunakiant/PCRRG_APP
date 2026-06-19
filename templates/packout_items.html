@@ -1,14 +1,14 @@
 ﻿{% extends "base.html" %}
 {% block content %}
-<h2>Packout Items for Job {{ job.id }} - {{ job.client_name }}</h2>
+<h2>Packout Items for Job {{ job.job_number }} - {{ job.title }}</h2>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" class="packout-form">
   <div>
-    <label>Item Name</label>
+    <label>Item name</label>
     <input type="text" name="name" required>
   </div>
   <div>
-    <label>Location (Kitchen, Bedroom, etc.)</label>
+    <label>Location (Kitchen, Bedroom, Bathroom, etc.)</label>
     <input type="text" name="location" required>
   </div>
   <div>
@@ -25,43 +25,54 @@
     </select>
   </div>
   <div>
-    <label>Photo (optional)</label>
+    <label>Notes</label>
+    <input type="text" name="notes">
+  </div>
+  <div>
+    <label>Photo (camera or upload)</label>
     <input type="file" name="photo" accept="image/*" capture="environment">
   </div>
-  <button type="submit">Add Item</button>
+  <button type="submit">Add packout item</button>
 </form>
 
 <hr>
 
-<table>
-  <tr>
-    <th>Item</th>
-    <th>Location</th>
-    <th>Qty</th>
-    <th>Condition</th>
-    <th>Photo</th>
-    <th>Actions</th>
-  </tr>
-  {% for item in job.packout_items %}
-  <tr>
-    <td>{{ item.name }}</td>
-    <td>{{ item.location }}</td>
-    <td>{{ item.quantity }}</td>
-    <td>{{ item.condition }}</td>
-    <td>
-      {% if item.photo_path %}
-        <img src="{{ url_for('static', filename=item.photo_path) }}" style="max-width:100px;">
-      {% else %}
-        No photo
-      {% endif %}
-    </td>
-    <td>
-      <form method="post" action="{{ url_for('packout_delete', item_id=item.id) }}">
-        <button type="submit">Delete</button>
-      </form>
-    </td>
-  </tr>
-  {% endfor %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Location</th>
+      <th>Qty</th>
+      <th>Condition</th>
+      <th>Notes</th>
+      <th>Photo</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in job.packout_items %}
+    <tr>
+      <td>{{ item.name }}</td>
+      <td>{{ item.location }}</td>
+      <td>{{ item.quantity }}</td>
+      <td>{{ item.condition }}</td>
+      <td>{{ item.notes }}</td>
+      <td>
+        {% if item.photo_path %}
+          <img src="{{ url_for('static', filename=item.photo_path) }}" style="max-width:100px; max-height:100px;">
+        {% else %}
+          No photo
+        {% endif %}
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('packout_delete', item_id=item.id) }}">
+          <button type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
 </table>
 
+<a href="{{ url_for('view_job', job_id=job.id) }}" class="btn btn-secondary">Back to job</a>
 {% endblock %}
