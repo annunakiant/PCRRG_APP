@@ -39,7 +39,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Starting PCRRG SUPER-MEGA app.py")
 
-db = SQLAlchemy(app)
+db = SQLAlchemy(app)\n\n# -------------------------------------------------------------------------\n# MODELS\n# -------------------------------------------------------------------------\n\n[MODELS_INSERTED_HERE]
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -1098,6 +1098,9 @@ class EmployeeSession(db.Model):
     notes = db.Column(db.String(255))
 
     user = db.relationship('User')
+
+
+
 
 
 
