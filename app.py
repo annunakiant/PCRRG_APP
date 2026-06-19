@@ -39,11 +39,24 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Starting PCRRG SUPER-MEGA app.py")
 
-db = SQLAlchemy(app)\n\n# -------------------------------------------------------------------------\n# MODELS\n# -------------------------------------------------------------------------\n\n[MODELS_INSERTED_HERE]
+db = SQLAlchemy(app)
+
+# -------------------------------------------------------------------------
+# MODELS
+# -------------------------------------------------------------------------
+
+[MODELS_INSERTED_HERE]
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# -------------------------------------------------------------------------\n# MODELS\n# -------------------------------------------------------------------------\n\n# [MODELS_INSERTED_HERE]\n\n# -------------------------------------------------------------------------\n# LOGIN + GLOBALS
+# -------------------------------------------------------------------------
+# MODELS
+# -------------------------------------------------------------------------
+
+# [MODELS_INSERTED_HERE]
+
+# -------------------------------------------------------------------------
+# LOGIN + GLOBALS
 # -------------------------------------------------------------------------
 @login_manager.user_loader
 def load_user(user_id):
@@ -877,7 +890,8 @@ def share_job(job_id):
         status = "Signed" if c.signed else "Pending"
         body_lines.append(f"- Template #{c.template_id} [{status}]")
 
-    body = "\n".join(body_lines)
+    body = "
+".join(body_lines)
     send_job_email(job, to_email, f"Job report: {job.job_number}", body)
     flash('Job report emailed (if email is configured).')
     return redirect(url_for('view_job', job_id=job.id))
@@ -1098,6 +1112,7 @@ class EmployeeSession(db.Model):
     notes = db.Column(db.String(255))
 
     user = db.relationship('User')
+
 
 
 
