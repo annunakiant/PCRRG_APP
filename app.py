@@ -1183,19 +1183,7 @@ def inject_theme():
 from routes_templates import templates_bp
 app.register_blueprint(templates_bp)
 
-# --- Packout items model ---
-class PackoutItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    location = db.Column(db.String(255), nullable=False)  # e.g. Kitchen, Bedroom
-    quantity = db.Column(db.Integer, default=1)
-    condition = db.Column(db.String(50), nullable=False)  # Salvageable, Retained, Damaged, Other
-    photo_path = db.Column(db.String(512))  # single main photo for now
 
-    job = db.relationship('Job', backref=db.backref('packout_items', lazy=True))
-
-# --- Packout routes ---
 @app.route('/jobs/<int:job_id>/packout', methods=['GET', 'POST'])
 @login_required
 def packout(job_id):
@@ -1238,3 +1226,4 @@ def packout_delete(item_id):
     db.session.commit()
     flash('Packout item deleted.', 'info')
     return redirect(url_for('packout', job_id=job_id))
+
