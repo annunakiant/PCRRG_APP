@@ -1209,15 +1209,6 @@ def packout_delete(item_id):
 
 
 
-class PackoutItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    quantity = db.Column(db.Integer, default=1)
-    location = db.Column(db.String(255))
-    notes = db.Column(db.String(255))
-    condition = db.Column(db.String(50))  # Salvageable, Retained, Damaged, Other
-    photo_path = db.Column(db.String(255))  # relative path to static image
 
 class InventoryItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1241,3 +1232,4 @@ class EmployeeSession(db.Model):
     notes = db.Column(db.String(255))
 
     user = db.relationship('User')
+
