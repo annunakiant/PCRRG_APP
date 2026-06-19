@@ -98,16 +98,7 @@ class Photo(db.Model):
     user = db.relationship('User')
 
 
-class PackoutItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    quantity = db.Column(db.Integer, default=1)
-    location = db.Column(db.String(255))
-    notes = db.Column(db.String(255))\n    condition = db.Column(db.String(50))  # Salvageable, Retained, Damaged, Other\n    photo_path = db.Column(db.String(255))  # relative path to static image
-
-
-class InventoryItem(db.Model):
+(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     sku = db.Column(db.String(100))
@@ -163,19 +154,7 @@ class CustomFieldValue(db.Model):
     field = db.relationship('CustomField')
 
 
-class EmployeeSession(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'))
-    clock_in_at = db.Column(db.DateTime, default=datetime.utcnow)
-    clock_out_at = db.Column(db.DateTime)
-    clock_in_lat = db.Column(db.Float)
-    clock_in_lon = db.Column(db.Float)
-    clock_out_lat = db.Column(db.Float)
-    clock_out_lon = db.Column(db.Float)
-    notes = db.Column(db.String(255))\n    condition = db.Column(db.String(50))  # Salvageable, Retained, Damaged, Other\n    photo_path = db.Column(db.String(255))  # relative path to static image
-
-    user = db.relationship('User')
+('User')
 
 
 class JobTaskTemplate(db.Model):
@@ -1229,3 +1208,36 @@ def packout_delete(item_id):
 
 
 
+
+class PackoutItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    location = db.Column(db.String(255))
+    notes = db.Column(db.String(255))
+    condition = db.Column(db.String(50))  # Salvageable, Retained, Damaged, Other
+    photo_path = db.Column(db.String(255))  # relative path to static image
+
+class InventoryItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    sku = db.Column(db.String(100))
+    barcode = db.Column(db.String(255))
+    quantity = db.Column(db.Integer, default=0)
+    location = db.Column(db.String(255))
+    notes = db.Column(db.String(255))
+
+class EmployeeSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'))
+    clock_in_at = db.Column(db.DateTime, default=datetime.utcnow)
+    clock_out_at = db.Column(db.DateTime)
+    clock_in_lat = db.Column(db.Float)
+    clock_in_lon = db.Column(db.Float)
+    clock_out_lat = db.Column(db.Float)
+    clock_out_lon = db.Column(db.Float)
+    notes = db.Column(db.String(255))
+
+    user = db.relationship('User')
