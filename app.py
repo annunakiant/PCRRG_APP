@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import logging
 from datetime import datetime
@@ -1182,3 +1182,4 @@ def inject_theme():
         return {"t": {}}
 from routes_templates import templates_bp
 app.register_blueprint(templates_bp)
+
