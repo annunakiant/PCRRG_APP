@@ -1,7 +1,8 @@
-  import os
+import os
 import json
 import logging
 from datetime import datetime
+
 from flask import (
     Flask, render_template, redirect, url_for,
     request, flash, jsonify
@@ -22,8 +23,11 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 
+data_dir = os.path.join(BASE_DIR, 'data')
+os.makedirs(data_dir, exist_ok=True)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(
-    BASE_DIR, 'data', 'pcrrg_fieldops_v2.db'
+    data_dir, 'pcrrg_fieldops_v2.db'
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -31,6 +35,7 @@ app.config['UPLOAD_FOLDER_PHOTOS'] = os.path.join(BASE_DIR, 'static', 'uploads')
 app.config['UPLOAD_FOLDER_CONTRACTS'] = os.path.join(BASE_DIR, 'static', 'contracts')
 app.config['UPLOAD_FOLDER_PACKOUT'] = os.path.join(BASE_DIR, 'static', 'packouts')
 app.config['ARCHIVE_FOLDER'] = os.path.join(BASE_DIR, 'data', 'archive')
+os.makedirs(app.config['ARCHIVE_FOLDER'], exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,12 +53,12 @@ db = SQLAlchemy(app)
 
 class ThemeSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    primary_color = db.Column(db.String(20), default="#1E88E5")
-    secondary_color = db.Column(db.String(20), default="#FFC107")
+    primary_color = db.Column(db.String(32), default="#1E88E5")
+    secondary_color = db.Column(db.String(32), default="#FFC107")
     logo_url = db.Column(db.String(255), default="/static/logo.png")
 
 
-class User(UserMixin, db.Model):
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     pin = db.Column(db.String(16), nullable=False)
@@ -72,156 +77,162 @@ class User(UserMixin, db.Model):
 
 class CustomTab(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), nullable=False)
+    name = db.Column(db.String(128), nullable=False)
     order = db.Column(db.Integer, default=0)
+
+
+class CustomField(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tab_id = db.Column(db.Integer, db.ForeignKey('custom_tab.id'))
+    label = db.Column(db.String(128), nullable=False)
+    field_type = db.Column(db.String(32), default="text")
+    order = db.Column(db.Integer, default=0)
+
+    tab = db.relationship('CustomTab', backref=db.backref('fields', lazy='dynamic'))
 
 
 class Job(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_number = db.Column(db.String(64), unique=True)
-    title = db.Column(db.String(128))
-    client_name = db.Column(db.String(128))
-    address = db.Column(db.String(256))
-    service_type = db.Column(db.String(64))
+    title = db.Column(db.String(255))
+    client_name = db.Column(db.String(255))
+    address = db.Column(db.String(255))
+    service_type = db.Column(db.String(128))
     status = db.Column(db.String(32), default="open")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime)
 
-    photos = db.relationship("Photo", backref="job", lazy="dynamic")
-    packout_items = db.relationship("PackoutItem", backref="job", lazy="dynamic")
-    contracts = db.relationship("JobContract", backref="job", lazy="dynamic")
-    tasks = db.relationship("JobTask", backref="job", lazy="dynamic")
-    custom_values = db.relationship("CustomValue", backref="job", lazy="dynamic")
+    photos = db.relationship(
+        'Photo',
+        backref='job',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+    packout_items = db.relationship(
+        'PackoutItem',
+        backref='job',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+    contracts = db.relationship(
+        'JobContract',
+        backref='job',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+    tasks = db.relationship(
+        'JobTask',
+        backref='job',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+    custom_values = db.relationship(
+        'JobCustomValue',
+        backref='job',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
 
 
 class InventoryItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    sku = db.Column(db.String(64))
-    barcode = db.Column(db.String(64))
+    name = db.Column(db.String(255), nullable=False)
+    sku = db.Column(db.String(128))
+    barcode = db.Column(db.String(128))
     quantity = db.Column(db.Integer, default=0)
-    location = db.Column(db.String(128))
+    location = db.Column(db.String(255))
     notes = db.Column(db.Text)
 
 
 class EmployeeSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'))
     clock_in_at = db.Column(db.DateTime, default=datetime.utcnow)
     clock_out_at = db.Column(db.DateTime)
     clock_in_lat = db.Column(db.Float)
     clock_in_lon = db.Column(db.Float)
+    clock_out_lat = db.Column(db.Float)
+    clock_out_lon = db.Column(db.Float)
+
+    user = db.relationship('User', backref=db.backref('sessions', lazy='dynamic'))
+    job = db.relationship('Job', backref=db.backref('sessions', lazy='dynamic'))
+
+
+class JobTaskTemplate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    service_type = db.Column(db.String(128))
+
+
+class JobTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey('job_task_template.id'))
+    label = db.Column(db.String(255), nullable=False)
+    completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime)
+    completed_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    template = db.relationship('JobTaskTemplate', backref=db.backref('tasks', lazy='dynamic'))
+    completed_by = db.relationship('User', backref=db.backref('completed_tasks', lazy='dynamic'))
 
 
 class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
-    category = db.Column(db.String(64))
+    category = db.Column(db.String(128))
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    user = db.relationship('User', backref=db.backref('photos', lazy='dynamic'))
+
 
 class PackoutItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    name = db.Column(db.String(128), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
     quantity = db.Column(db.Integer, default=1)
-    location = db.Column(db.String(128))
+    location = db.Column(db.String(255))
     notes = db.Column(db.Text)
+    photo_path = db.Column(db.String(255))  # optional relative path to static image
 
 
 class ContractTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
 
 
 class JobContract(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey("contract_template.id"), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'), nullable=False)
     signed = db.Column(db.Boolean, default=False)
     signed_at = db.Column(db.DateTime)
-    signer_name = db.Column(db.String(128))
-    signer_email = db.Column(db.String(128))
+    signer_name = db.Column(db.String(255))
+    signer_email = db.Column(db.String(255))
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
 
-    template = db.relationship("ContractTemplate")
+    template = db.relationship('ContractTemplate', backref=db.backref('contracts', lazy='dynamic'))
 
 
-class JobTaskTemplate(db.Model):
+class JobCustomValue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    description = db.Column(db.Text)
-    service_type = db.Column(db.String(64))
-
-
-class JobTask(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey("job_task_template.id"))
-    label = db.Column(db.String(128), nullable=False)
-    completed = db.Column(db.Boolean, default=False)
-    completed_at = db.Column(db.DateTime)
-    completed_by_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-
-    template = db.relationship("JobTaskTemplate")
-    completed_by = db.relationship("User")
-
-
-class CustomField(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    tab_id = db.Column(db.Integer, db.ForeignKey("custom_tab.id"))
-    label = db.Column(db.String(128), nullable=False)
-    field_type = db.Column(db.String(32), default="text")
-
-    tab = db.relationship("CustomTab")
-
-
-class CustomValue(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    field_id = db.Column(db.Integer, db.ForeignKey("custom_field.id"), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    field_id = db.Column(db.Integer, db.ForeignKey('custom_field.id'), nullable=False)
     value = db.Column(db.Text)
 
-    field = db.relationship("CustomField")
+    field = db.relationship('CustomField', backref=db.backref('values', lazy='dynamic'))
 
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-
-# -------------------------------------------------------------------------
-# SUPER-MEGA BOOTSTRAP
-# -------------------------------------------------------------------------
-
-
-def supermega_bootstrap():
-    logger.info("Running SUPER-MEGA DB bootstrap...")
-    db.create_all()
-    logger.info("DB tables created/verified.")
-
-    admin = User.query.filter_by(username='admin').first()
-    if not admin:
-        admin = User(
-            username='admin',
-            pin='1234',
-            name='Default Admin',
-            role='admin'
-        )
-        db.session.add(admin)
-        db.session.commit()
-        logger.info("Default admin user created (admin / 1234).")
-
-    logger.info("SUPER-MEGA app bootstrap complete.")
-
-
-with app.app_context():
-    supermega_bootstrap()
 
 # -------------------------------------------------------------------------
 # LOGIN + GLOBALS
@@ -1103,15 +1114,50 @@ def archive_job(job_id):
 
     job = Job.query.get_or_404(job_id)
     job.status = 'archived'
+    if not job.closed_at:
+        job.closed_at = datetime.utcnow()
     db.session.commit()
     flash('Job archived.')
-    return redirect(url_for('view_job', job_id=job.id))
-
+    return redirect(url_for('view_job', job_id=job_id))
 
 # -------------------------------------------------------------------------
-# MAIN (for local dev)
+# SUPER-MEGA DB BOOTSTRAP
+# -------------------------------------------------------------------------
+
+
+def supermega_bootstrap():
+    with app.app_context():
+        logger.info("Running SUPER-MEGA DB bootstrap...")
+        os.makedirs(app.config['UPLOAD_FOLDER_PHOTOS'], exist_ok=True)
+        os.makedirs(app.config['UPLOAD_FOLDER_CONTRACTS'], exist_ok=True)
+        os.makedirs(app.config['UPLOAD_FOLDER_PACKOUT'], exist_ok=True)
+        os.makedirs(app.config['ARCHIVE_FOLDER'], exist_ok=True)
+
+        db.create_all()
+        logger.info("DB tables created/verified.")
+
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            admin = User(
+                username='admin',
+                pin='1234',
+                name='Default Admin',
+                role='admin'
+            )
+            db.session.add(admin)
+            db.session.commit()
+            logger.info("Default admin user created (admin / 1234).")
+        else:
+            logger.info("Default admin user already exists.")
+
+        logger.info("SUPER-MEGA app bootstrap complete.")
+
+
+supermega_bootstrap()
+
+# -------------------------------------------------------------------------
+# WSGI ENTRYPOINT
 # -------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    app.run(debug=True)
-         
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '5000')))
