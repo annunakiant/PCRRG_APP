@@ -15,45 +15,91 @@ import smtplib
 from email.message import EmailMessage
 from werkzeug.utils import secure_filename
 
-# -------------------------
-# Basic config + logging
-# -------------------------
+# -------------------------------------------------------------------------
+# BASE CONFIG + LOGGING
+# -------------------------------------------------------------------------
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(STATIC_DIR, exist_ok=True)
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(DATA_DIR, "app.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 
-# Upload folders
-app.config["UPLOAD_FOLDER_PHOTOS"] = os.path.join(STATIC_DIR, "uploads", "photos")
-app.config["UPLOAD_FOLDER_PACKOUT"] = os.path.join(STATIC_DIR, "uploads", "packouts")
-app.config["UPLOAD_FOLDER_CONTRACTS"] = os.path.join(STATIC_DIR, "uploads", "contracts")
-for p in (app.config["UPLOAD_FOLDER_PHOTOS"], app.config["UPLOAD_FOLDER_PACKOUT"], app.config["UPLOAD_FOLDER_CONTRACTS"]):
+data_dir = os.path.join(BASE_DIR, 'data')
+os.makedirs(data_dir, exist_ok=True)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(
+    data_dir, 'pcrrg_fieldops_v2.db'
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+UPLOAD_ROOT = os.path.join(STATIC_DIR, 'uploads')
+PHOTOS_FOLDER = os.path.join(UPLOAD_ROOT, 'photos')
+PACKOUT_FOLDER = os.path.join(UPLOAD_ROOT, 'packouts')
+CONTRACTS_FOLDER = os.path.join(UPLOAD_ROOT, 'contracts')
+ARCHIVE_FOLDER = os.path.join(data_dir, 'archive')
+
+for p in (UPLOAD_ROOT, PHOTOS_FOLDER, PACKOUT_FOLDER, CONTRACTS_FOLDER, ARCHIVE_FOLDER):
     os.makedirs(p, exist_ok=True)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+app.config['UPLOAD_FOLDER_PHOTOS'] = PHOTOS_FOLDER
+app.config['UPLOAD_FOLDER_PACKOUT'] = PACKOUT_FOLDER
+app.config['UPLOAD_FOLDER_CONTRACTS'] = CONTRACTS_FOLDER
+app.config['ARCHIVE_FOLDER'] = ARCHIVE_FOLDER
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+)
 logger = logging.getLogger(__name__)
-logger.info("Starting app.py")
+logger.info("Starting PCRRG SUPER-MEGA app.py")
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-login_manager.login_view = "login"
+login_manager.login_view = 'login'
 
-ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "gif"}
+ALLOWED_IMAGE_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 
-# -------------------------
-# Models
-# -------------------------
+# -------------------------------------------------------------------------
+# HELPERS
+# -------------------------------------------------------------------------
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXT
+
+
+def save_upload(fileobj, folder):
+    """
+    Save uploaded file securely into folder.
+    Returns tuple (relative_path_from_static, absolute_path).
+    """
+    filename = secure_filename(fileobj.filename)
+    timestamp = int(datetime.utcnow().timestamp())
+    filename = f"{timestamp}_{filename}"
+    os.makedirs(folder, exist_ok=True)
+    abs_path = os.path.join(folder, filename)
+    fileobj.save(abs_path)
+    rel_path = os.path.relpath(abs_path, STATIC_DIR)
+    return rel_path.replace('\\', '/'), abs_path
+
+
+def attach_files_to_email(msg: EmailMessage, file_paths):
+    for p in file_paths:
+        try:
+            with open(p, 'rb') as f:
+                data = f.read()
+            subtype = p.rsplit('.', 1)[1].lower() if '.' in p else 'octet-stream'
+            msg.add_attachment(data, maintype='image', subtype=subtype, filename=os.path.basename(p))
+        except Exception:
+            logger.exception("Failed to attach file %s", p)
+
+
+# -------------------------------------------------------------------------
+# MODELS
+# -------------------------------------------------------------------------
 class ThemeSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    primary_color = db.Column(db.String(20), default="#1E88E5")
-    secondary_color = db.Column(db.String(20), default="#FFC107")
+    primary_color = db.Column(db.String(32), default="#1E88E5")
+    secondary_color = db.Column(db.String(32), default="#FFC107")
     logo_url = db.Column(db.String(255), default="/static/logo.png")
 
 
@@ -64,10 +110,27 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(255))
     phone = db.Column(db.String(50))
     email = db.Column(db.String(255))
-    role = db.Column(db.String(50), default="tech")  # 'tech', 'admin'
+    role = db.Column(db.String(50), default='tech')  # 'tech', 'admin'
 
     def is_admin(self):
-        return self.role == "admin"
+        return self.role == 'admin'
+
+
+class CustomTab(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    order = db.Column(db.Integer, default=0)
+
+
+class CustomField(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tab_id = db.Column(db.Integer, db.ForeignKey('custom_tab.id'), nullable=True)
+    label = db.Column(db.String(255), nullable=False)
+    field_type = db.Column(db.String(50), nullable=False)  # text, number, select, checkbox
+    required = db.Column(db.Boolean, default=False)
+    options = db.Column(db.String(255))  # comma-separated for select
+
+    tab = db.relationship('CustomTab', backref=db.backref('fields', lazy='dynamic'))
 
 
 class Job(db.Model):
@@ -76,26 +139,26 @@ class Job(db.Model):
     title = db.Column(db.String(255), nullable=False)
     client_name = db.Column(db.String(255))
     address = db.Column(db.String(255))
-    status = db.Column(db.String(50), default="open")  # open, closed, archived
+    status = db.Column(db.String(50), default='open')  # open, closed, archived
     service_type = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime)
 
-    photos = db.relationship("JobPhoto", backref="job", lazy="dynamic", cascade="all,delete-orphan")
-    packout_items = db.relationship("PackoutItem", backref="job", lazy="dynamic", cascade="all,delete-orphan")
-    contracts = db.relationship("JobContract", backref="job", lazy="dynamic", cascade="all,delete-orphan")
-    tasks = db.relationship("JobTask", backref="job", lazy="dynamic", cascade="all,delete-orphan")
-    custom_values = db.relationship("JobCustomValue", backref="job", lazy="dynamic", cascade="all,delete-orphan")
+    photos = db.relationship('JobPhoto', backref='job', lazy='dynamic', cascade='all, delete-orphan')
+    packout_items = db.relationship('PackoutItem', backref='job', lazy='dynamic', cascade='all, delete-orphan')
+    contracts = db.relationship('JobContract', backref='job', lazy='dynamic', cascade='all, delete-orphan')
+    tasks = db.relationship('JobTask', backref='job', lazy='dynamic', cascade='all, delete-orphan')
+    custom_values = db.relationship('JobCustomValue', backref='job', lazy='dynamic', cascade='all, delete-orphan')
 
 
 class JobPhoto(db.Model):
     """
-    Room-level photos (before/after). Each photo belongs to a job and has a location label.
+    Room-level photos (before/after). Stored filename is relative to static/.
     """
     id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    filename = db.Column(db.String(255), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    filename = db.Column(db.String(255), nullable=False)  # relative to static/
     location_label = db.Column(db.String(255))  # e.g., Kitchen, Bedroom
     before_after = db.Column(db.String(16))  # 'before' or 'after' or None
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -104,23 +167,20 @@ class JobPhoto(db.Model):
 
 
 class PackoutItem(db.Model):
-    """
-    Packout items attached to a job. Each item can have multiple photos (packout photos).
-    """
     id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     quantity = db.Column(db.Integer, default=1)
     location = db.Column(db.String(255))
-    notes = db.Column(db.String(255))
+    notes = db.Column(db.Text)
     condition = db.Column(db.String(50))
-    photos = db.relationship("PackoutPhoto", backref="item", lazy="dynamic", cascade="all,delete-orphan")
+    photos = db.relationship('PackoutPhoto', backref='item', lazy='dynamic', cascade='all, delete-orphan')
 
 
 class PackoutPhoto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("packout_item.id"), nullable=False)
-    filename = db.Column(db.String(255), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('packout_item.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)  # relative to static/
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -132,8 +192,8 @@ class ContractTemplate(db.Model):
 
 class JobContract(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey("contract_template.id"))
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'))
     signed = db.Column(db.Boolean, default=False)
     signed_at = db.Column(db.DateTime)
     signer_name = db.Column(db.String(255))
@@ -141,263 +201,765 @@ class JobContract(db.Model):
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
 
-    template = db.relationship("ContractTemplate")
+    template = db.relationship('ContractTemplate', backref=db.backref('contracts', lazy='dynamic'))
 
 
 class JobTaskTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.String(255))
-    service_type = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    service_type = db.Column(db.String(128))
 
 
 class JobTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey("job_task_template.id"))
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey('job_task_template.id'))
     label = db.Column(db.String(255), nullable=False)
     completed = db.Column(db.Boolean, default=False)
     completed_at = db.Column(db.DateTime)
-    completed_by_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    completed_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    template = db.relationship("JobTaskTemplate")
-    completed_by = db.relationship("User")
-
-
-class CustomField(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    tab_id = db.Column(db.Integer, db.ForeignKey("custom_tab.id"), nullable=True)
-    label = db.Column(db.String(255), nullable=False)
-    field_type = db.Column(db.String(50), nullable=False)  # text, number, select, checkbox
-    required = db.Column(db.Boolean, default=False)
-    options = db.Column(db.String(255))  # comma-separated for select
+    template = db.relationship('JobTaskTemplate', backref=db.backref('tasks', lazy='dynamic'))
+    completed_by = db.relationship('User')
 
 
 class JobCustomValue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), nullable=False)
-    field_id = db.Column(db.Integer, db.ForeignKey("custom_field.id"), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
+    field_id = db.Column(db.Integer, db.ForeignKey('custom_field.id'), nullable=False)
     value = db.Column(db.String(255))
-    field = db.relationship("CustomField")
+    field = db.relationship('CustomField', backref=db.backref('values', lazy='dynamic'))
 
 
-# -------------------------
-# Helpers
-# -------------------------
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXT
+class InventoryItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    sku = db.Column(db.String(128))
+    barcode = db.Column(db.String(128))
+    quantity = db.Column(db.Integer, default=0)
+    location = db.Column(db.String(255))
+    notes = db.Column(db.Text)
 
 
-def save_upload(fileobj, folder):
-    filename = secure_filename(fileobj.filename)
-    timestamp = int(datetime.utcnow().timestamp())
-    filename = f"{timestamp}_{filename}"
-    path = os.path.join(folder, filename)
-    fileobj.save(path)
-    # return relative path from static for templates
-    rel = os.path.relpath(path, STATIC_DIR)
-    return rel, path
+class EmployeeSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'))
+    clock_in_at = db.Column(db.DateTime, default=datetime.utcnow)
+    clock_out_at = db.Column(db.DateTime)
+    clock_in_lat = db.Column(db.Float)
+    clock_in_lon = db.Column(db.Float)
+    clock_out_lat = db.Column(db.Float)
+    clock_out_lon = db.Column(db.Float)
+    notes = db.Column(db.Text)
 
 
-def attach_files_to_email(msg: EmailMessage, file_paths):
-    for p in file_paths:
-        try:
-            with open(p, "rb") as f:
-                data = f.read()
-            maintype = "image"
-            subtype = p.rsplit(".", 1)[1].lower() if "." in p else "octet-stream"
-            msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=os.path.basename(p))
-        except Exception:
-            logger.exception("Failed to attach file %s", p)
-
-
-# -------------------------
-# Bootstrap (create DB + default admin)
-# -------------------------
+# -------------------------------------------------------------------------
+# BOOTSTRAP DB + DEFAULT ADMIN
+# -------------------------------------------------------------------------
 with app.app_context():
     db.create_all()
     if not ThemeSettings.query.first():
         db.session.add(ThemeSettings())
         db.session.commit()
-    if not User.query.filter_by(username="admin").first():
-        admin = User(username="admin", pin="1234", name="Default Admin", role="admin")
+    if not User.query.filter_by(username='admin').first():
+        admin = User(username='admin', pin='1234', name='Default Admin', role='admin')
         db.session.add(admin)
         db.session.commit()
-        logger.info("Created default admin (admin / 1234)")
+        logger.info("Default admin user created (admin / 1234).")
 
 
-# -------------------------
-# Login + globals
-# -------------------------
+# -------------------------------------------------------------------------
+# LOGIN + GLOBALS
+# -------------------------------------------------------------------------
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+def is_admin():
+    return current_user.is_authenticated and getattr(current_user, 'role', '') == 'admin'
+
+
 @app.context_processor
 def inject_globals():
     theme = ThemeSettings.query.first()
-    return {"is_admin": current_user.is_authenticated and getattr(current_user, "role", "") == "admin",
-            "current_user": current_user, "theme": theme}
+    return {
+        'is_admin': is_admin(),
+        'current_user': current_user,
+        'theme': theme
+    }
 
 
-# -------------------------
-# Routes (Auth, Dashboard, Jobs, Packout, Photos)
-# -------------------------
-@app.route("/login", methods=["GET", "POST"])
+# -------------------------------------------------------------------------
+# EMAIL UTIL
+# -------------------------------------------------------------------------
+def send_job_email_with_attachments(job, to_email, subject, body, attachment_paths):
+    smtp_host = os.environ.get('SMTP_HOST')
+    smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+    smtp_user = os.environ.get('SMTP_USER')
+    smtp_pass = os.environ.get('SMTP_PASS')
+    from_email = os.environ.get('FROM_EMAIL', smtp_user)
+
+    if not (smtp_host and smtp_user and smtp_pass and from_email):
+        logger.warning('Email not configured; skipping send.')
+        return False, 'Email not configured on server.'
+
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg.set_content(body)
+    attach_files_to_email(msg, attachment_paths)
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+        logger.info(f"Email sent to {to_email} for job {job.job_number}")
+        return True, 'Email sent.'
+    except Exception as e:
+        logger.exception("Error sending email")
+        return False, str(e)
+
+
+# -------------------------------------------------------------------------
+# ROUTES
+# -------------------------------------------------------------------------
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == "POST":
-        username = request.form.get("username")
-        pin = request.form.get("pin")
+    if request.method == 'POST':
+        username = request.form.get('username')
+        pin = request.form.get('pin')
         user = User.query.filter_by(username=username, pin=pin).first()
         if user:
             login_user(user)
-            flash("Logged in.")
-            return redirect(request.args.get("next") or url_for("dashboard"))
-        flash("Invalid credentials.")
-    return render_template("login.html")
+            flash('Logged in.')
+            next_url = request.args.get('next') or url_for('dashboard')
+            return redirect(next_url)
+        else:
+            flash('Invalid credentials.')
+    return render_template('login.html')
 
 
-@app.route("/logout")
+@app.route('/logout')
 @login_required
 def logout():
     logout_user()
-    flash("Logged out.")
-    return redirect(url_for("login"))
+    flash('Logged out.')
+    return redirect(url_for('login'))
 
 
-@app.route("/")
+@app.route('/')
 @login_required
 def dashboard():
-    jobs_open = Job.query.filter_by(status="open").count()
-    jobs_closed = Job.query.filter_by(status="closed").count()
-    jobs_archived = Job.query.filter_by(status="archived").count()
-    inventory_count = 0 if not db.engine else db.session.query(db.func.count()).select_from(PackoutItem).scalar() or 0
+    jobs_open = Job.query.filter_by(status='open').count()
+    jobs_closed = Job.query.filter_by(status='closed').count()
+    jobs_archived = Job.query.filter_by(status='archived').count()
+    inventory_count = InventoryItem.query.count()
     contracts_pending = JobContract.query.filter_by(signed=False).count()
+
     recent_jobs = Job.query.order_by(Job.created_at.desc()).limit(10).all()
-    active_sessions = []  # keep simple
-    return render_template("dashboard.html", jobs_open=jobs_open, jobs_closed=jobs_closed,
-                           jobs_archived=jobs_archived, inventory_count=inventory_count,
-                           contracts_pending=contracts_pending, recent_jobs=recent_jobs,
-                           active_sessions=active_sessions)
+    active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
+
+    return render_template(
+        'dashboard.html',
+        jobs_open=jobs_open,
+        jobs_closed=jobs_closed,
+        jobs_archived=jobs_archived,
+        inventory_count=inventory_count,
+        contracts_pending=contracts_pending,
+        recent_jobs=recent_jobs,
+        active_sessions=active_sessions
+    )
 
 
-# Job CRUD
-@app.route("/jobs/new", methods=["GET", "POST"])
+@app.route('/employee/clock-in', methods=['POST'])
 @login_required
-def new_job():
-    if not current_user.is_authenticated or not current_user.is_admin():
-        flash("Admins only.")
-        return redirect(url_for("dashboard"))
-    if request.method == "POST":
-        job = Job(job_number=request.form.get("job_number") or f"JOB-{int(datetime.utcnow().timestamp())}",
-                  title=request.form.get("title") or "Untitled",
-                  client_name=request.form.get("client_name"),
-                  address=request.form.get("address"),
-                  service_type=request.form.get("service_type"))
-        db.session.add(job)
+def employee_clock_in():
+    session = EmployeeSession(
+        user_id=current_user.id,
+        job_id=None,
+        clock_in_at=datetime.utcnow()
+    )
+    db.session.add(session)
+    db.session.commit()
+    flash('Clocked in.')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/employee/clock-out', methods=['POST'])
+@login_required
+def employee_clock_out():
+    session = EmployeeSession.query.filter_by(
+        user_id=current_user.id,
+        clock_out_at=None
+    ).first()
+
+    if session:
+        session.clock_out_at = datetime.utcnow()
         db.session.commit()
-        flash("Job created.")
-        return redirect(url_for("view_job", job_id=job.id))
-    return render_template("new_job.html")
+        flash('Clocked out.')
+    else:
+        flash('No active session.')
+
+    return redirect(url_for('dashboard'))
 
 
-@app.route("/jobs/<int:job_id>")
+# Admin home + theme + users + tabs
+@app.route('/admin')
+@login_required
+def admin_home():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    jobs = Job.query.order_by(Job.created_at.desc()).limit(10).all()
+    inventory_items = InventoryItem.query.order_by(InventoryItem.name).limit(10).all()
+    tabs = CustomTab.query.order_by(CustomTab.order).all()
+    theme = ThemeSettings.query.first()
+    task_templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
+    active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
+
+    return render_template(
+        'admin.html',
+        jobs=jobs,
+        inventory_items=inventory_items,
+        tabs=tabs,
+        theme=theme,
+        task_templates=task_templates,
+        active_sessions=active_sessions
+    )
+
+
+@app.route('/admin/theme', methods=['POST'])
+@login_required
+def admin_theme_update():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    primary = request.form.get('primary_color')
+    secondary = request.form.get('secondary_color')
+    logo = request.form.get('logo_url')
+
+    theme = ThemeSettings.query.first()
+    if not theme:
+        theme = ThemeSettings()
+        db.session.add(theme)
+
+    if primary:
+        theme.primary_color = primary
+    if secondary:
+        theme.secondary_color = secondary
+    if logo:
+        theme.logo_url = logo
+
+    db.session.commit()
+    flash('Theme updated.')
+    return redirect(url_for('admin_home'))
+
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    users = User.query.order_by(User.username).all()
+    return render_template('admin_users.html', users=users)
+
+
+@app.route('/admin/users/new', methods=['GET', 'POST'])
+@login_required
+def admin_users_new():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        pin = request.form.get('pin')
+        name = request.form.get('name')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
+        role = request.form.get('role') or 'tech'
+
+        if not username or not pin:
+            flash('Username and PIN are required.')
+            return redirect(url_for('admin_users_new'))
+
+        existing = User.query.filter_by(username=username).first()
+        if existing:
+            flash('Username already exists.')
+            return redirect(url_for('admin_users_new'))
+
+        user = User(
+            username=username,
+            pin=pin,
+            name=name,
+            phone=phone,
+            email=email,
+            role=role
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash('User created.')
+        return redirect(url_for('admin_users'))
+
+    return render_template('admin_users_edit.html', user=None)
+
+
+@app.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+def admin_users_edit(user_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        user.username = request.form.get('username') or user.username
+        user.pin = request.form.get('pin') or user.pin
+        user.name = request.form.get('name')
+        user.phone = request.form.get('phone')
+        user.email = request.form.get('email')
+        user.role = request.form.get('role') or user.role
+
+        db.session.commit()
+        flash('User updated.')
+        return redirect(url_for('admin_users'))
+
+    return render_template('admin_users_edit.html', user=user)
+
+
+@app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+def admin_users_delete(user_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    user = User.query.get_or_404(user_id)
+
+    if user.username == 'admin':
+        flash('Cannot delete default admin.')
+        return redirect(url_for('admin_users'))
+
+    db.session.delete(user)
+    db.session.commit()
+    flash('User deleted.')
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/tabs', methods=['GET', 'POST'])
+@login_required
+def admin_tabs():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        order = request.form.get('order') or 0
+
+        if not name:
+            flash('Tab name is required.')
+            return redirect(url_for('admin_tabs'))
+
+        tab = CustomTab(name=name, order=int(order))
+        db.session.add(tab)
+        db.session.commit()
+        flash('Tab created.')
+        return redirect(url_for('admin_tabs'))
+
+    tabs = CustomTab.query.order_by(CustomTab.order).all()
+    return render_template('admin_tabs.html', tabs=tabs)
+
+
+@app.route('/admin/tabs/<int:tab_id>/delete', methods=['POST'])
+@login_required
+def admin_tabs_delete(tab_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('admin_tabs'))
+
+    tab = CustomTab.query.get_or_404(tab_id)
+    db.session.delete(tab)
+    db.session.commit()
+    flash('Tab deleted.')
+    return redirect(url_for('admin_tabs'))
+
+
+# Timeline
+@app.route('/jobs/<int:job_id>/timeline')
+@login_required
+def job_timeline(job_id):
+    job = Job.query.get_or_404(job_id)
+    events = []
+
+    for p in job.photos.order_by(JobPhoto.uploaded_at.desc()).all():
+        events.append({
+            'type': 'photo',
+            'timestamp': p.uploaded_at,
+            'label': f'Photo: {p.location_label or "Uncategorized"} ({p.before_after or "n/a"})',
+            'meta': {
+                'filename': p.filename,
+                'lat': p.latitude,
+                'lon': p.longitude,
+                'user': p.user_id
+            }
+        })
+
+    for i in job.packout_items.order_by(PackoutItem.id.desc()).all():
+        events.append({
+            'type': 'packout',
+            'timestamp': job.created_at,
+            'label': f'Packout: {i.name} x{i.quantity}',
+            'meta': {
+                'location': i.location,
+                'notes': i.notes
+            }
+        })
+
+    for c in job.contracts.order_by(JobContract.signed_at.desc()).all():
+        events.append({
+            'type': 'contract',
+            'timestamp': c.signed_at or job.created_at,
+            'label': f'Contract: {"Signed" if c.signed else "Pending"}',
+            'meta': {
+                'signer': c.signer_name,
+                'email': c.signer_email,
+                'lat': c.latitude,
+                'lon': c.longitude
+            }
+        })
+
+    for t in job.tasks.order_by(JobTask.id.desc()).all():
+        events.append({
+            'type': 'task',
+            'timestamp': t.completed_at or job.created_at,
+            'label': f'Task: {t.label} {"(Done)" if t.completed else "(Pending)"}',
+            'meta': {
+                'completed_by': t.completed_by_id
+            }
+        })
+
+    events.sort(key=lambda e: e['timestamp'] or job.created_at, reverse=True)
+    return render_template('timeline.html', job=job, events=events)
+
+
+# Job view + map data
+@app.route('/jobs/<int:job_id>')
 @login_required
 def view_job(job_id):
     job = Job.query.get_or_404(job_id)
     photos = job.photos.order_by(JobPhoto.uploaded_at.desc()).all()
     packout_items = job.packout_items.order_by(PackoutItem.id.desc()).all()
-    return render_template("view_job.html", job=job, photos=photos, packout_items=packout_items)
+    contracts = job.contracts.all()
+    templates = ContractTemplate.query.all()
+    tabs = CustomTab.query.order_by(CustomTab.order).all()
+    tasks = job.tasks.order_by(JobTask.id).all()
+
+    values_map = {v.field_id: v.value for v in job.custom_values}
+
+    return render_template(
+        'view_job.html',
+        job=job,
+        photos=photos,
+        packout_items=packout_items,
+        contracts=contracts,
+        templates=templates,
+        tabs=tabs,
+        values_map=values_map,
+        tasks=tasks
+    )
 
 
-# Upload room-level photo (before/after)
-@app.route("/jobs/<int:job_id>/upload_room_photo", methods=["POST"])
+@app.route('/jobs/<int:job_id>/map-data')
 @login_required
-def upload_room_photo(job_id):
+def job_map_data(job_id):
     job = Job.query.get_or_404(job_id)
-    file = request.files.get("photo")
-    if not file or file.filename == "" or not allowed_file(file.filename):
-        flash("No valid image selected.")
-        return redirect(url_for("view_job", job_id=job.id))
 
-    rel, fullpath = save_upload(file, app.config["UPLOAD_FOLDER_PHOTOS"])
-    location_label = request.form.get("location_label")
-    before_after = request.form.get("before_after")  # 'before' or 'after'
-    lat = request.form.get("lat")
-    lon = request.form.get("lon")
+    photo_points = []
+    for p in job.photos.all():
+        if p.latitude is not None and p.longitude is not None:
+            photo_points.append({
+                'lat': p.latitude,
+                'lon': p.longitude,
+                'label': f'Photo: {p.location_label or "Uncategorized"}',
+                'filename': p.filename
+            })
 
-    jp = JobPhoto(job_id=job.id, user_id=current_user.id, filename=rel,
-                  location_label=location_label, before_after=before_after,
-                  latitude=float(lat) if lat else None, longitude=float(lon) if lon else None)
-    db.session.add(jp)
+    contract_points = []
+    for c in job.contracts.all():
+        if c.latitude is not None and c.longitude is not None:
+            contract_points.append({
+                'lat': c.latitude,
+                'lon': c.longitude,
+                'label': f'Contract: {"Signed" if c.signed else "Pending"}',
+                'signer': c.signer_name
+            })
+
+    return jsonify({
+        'job': {
+            'id': job.id,
+            'title': job.title,
+            'address': job.address
+        },
+        'photos': photo_points,
+        'contracts': contract_points
+    })
+
+
+# Job CRUD
+@app.route('/jobs/new', methods=['GET', 'POST'])
+@login_required
+def new_job():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        job = Job(
+            job_number=request.form.get('job_number') or f"JOB-{int(datetime.utcnow().timestamp())}",
+            title=request.form.get('title') or 'Untitled',
+            client_name=request.form.get('client_name'),
+            address=request.form.get('address'),
+            service_type=request.form.get('service_type')
+        )
+        db.session.add(job)
+        db.session.commit()
+        flash('Job created.')
+        return redirect(url_for('view_job', job_id=job.id))
+
+    return render_template('new_job.html')
+
+
+@app.route('/jobs/<int:job_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_job(job_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    job = Job.query.get_or_404(job_id)
+
+    if request.method == 'POST':
+        job.job_number = request.form.get('job_number') or job.job_number
+        job.title = request.form.get('title') or job.title
+        job.client_name = request.form.get('client_name')
+        job.address = request.form.get('address')
+        job.service_type = request.form.get('service_type')
+        job.status = request.form.get('status') or job.status
+
+        if job.status == 'closed' and not job.closed_at:
+            job.closed_at = datetime.utcnow()
+
+        db.session.commit()
+        flash('Job updated.')
+        return redirect(url_for('view_job', job_id=job.id))
+
+    return render_template('edit_job.html', job=job)
+
+
+@app.route('/jobs/<int:job_id>/delete', methods=['POST'])
+@login_required
+def delete_job(job_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    job = Job.query.get_or_404(job_id)
+    db.session.delete(job)
     db.session.commit()
-    flash("Photo uploaded.")
-    return redirect(url_for("view_job", job_id=job.id))
+    flash('Job deleted.')
+    return redirect(url_for('dashboard'))
 
 
-# Add packout item (optionally with a packout photo)
-@app.route("/jobs/<int:job_id>/packout/add", methods=["POST"])
+# Task templates + tasks
+@app.route('/admin/task-templates', methods=['GET', 'POST'])
+@login_required
+def admin_task_templates():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        service_type = request.form.get('service_type')
+        tmpl = JobTaskTemplate(
+            name=name,
+            description=description,
+            service_type=service_type
+        )
+        db.session.add(tmpl)
+        db.session.commit()
+        flash('Task template created.')
+        return redirect(url_for('admin_task_templates'))
+
+    templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
+    return render_template('admin_task_templates.html', templates=templates)
+
+
+@app.route('/jobs/<int:job_id>/tasks/add', methods=['POST'])
+@login_required
+def add_job_task(job_id):
+    job = Job.query.get_or_404(job_id)
+    template_id = request.form.get('template_id')
+    label = request.form.get('label')
+
+    if template_id:
+        tmpl = JobTaskTemplate.query.get(int(template_id))
+        label = label or (tmpl.name if tmpl else label)
+
+    task = JobTask(
+        job_id=job.id,
+        template_id=int(template_id) if template_id else None,
+        label=label or 'Task'
+    )
+    db.session.add(task)
+    db.session.commit()
+    flash('Task added to job.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+@app.route('/jobs/<int:job_id>/tasks/<int:task_id>/toggle', methods=['POST'])
+@login_required
+def toggle_job_task(job_id, task_id):
+    job = Job.query.get_or_404(job_id)
+    task = JobTask.query.get_or_404(task_id)
+
+    if task.completed:
+        task.completed = False
+        task.completed_at = None
+        task.completed_by_id = None
+    else:
+        task.completed = True
+        task.completed_at = datetime.utcnow()
+        task.completed_by_id = current_user.id
+
+    db.session.commit()
+    flash('Task status updated.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+# Photo upload (room-level before/after)
+@app.route('/jobs/<int:job_id>/upload_photo', methods=['POST'])
+@login_required
+def upload_photo(job_id):
+    job = Job.query.get_or_404(job_id)
+    file = request.files.get('photo')
+
+    if not file or file.filename == '' or not allowed_file(file.filename):
+        flash('No valid image selected.')
+        return redirect(url_for('view_job', job_id=job.id))
+
+    rel, abs_path = save_upload(file, app.config['UPLOAD_FOLDER_PHOTOS'])
+    lat = request.form.get('lat')
+    lon = request.form.get('lon')
+
+    photo = JobPhoto(
+        job_id=job.id,
+        user_id=current_user.id,
+        filename=os.path.join('uploads', rel).replace('\\', '/'),
+        location_label=request.form.get('location_label'),
+        before_after=request.form.get('before_after'),
+        latitude=float(lat) if lat else None,
+        longitude=float(lon) if lon else None
+    )
+
+    db.session.add(photo)
+    db.session.commit()
+
+    flash('Photo uploaded.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+# Packout add (with optional photo)
+@app.route('/jobs/<int:job_id>/packout/add', methods=['POST'])
 @login_required
 def add_packout_item(job_id):
     job = Job.query.get_or_404(job_id)
-    name = request.form.get("name")
+
+    name = request.form.get('name')
     if not name:
-        flash("Item name required.")
-        return redirect(url_for("view_job", job_id=job.id))
-    item = PackoutItem(job_id=job.id,
-                       name=name,
-                       quantity=int(request.form.get("quantity") or 1),
-                       location=request.form.get("location"),
-                       notes=request.form.get("notes"),
-                       condition=request.form.get("condition"))
+        flash('Item name required.')
+        return redirect(url_for('view_job', job_id=job.id))
+
+    item = PackoutItem(
+        job_id=job.id,
+        name=name,
+        quantity=int(request.form.get('quantity') or 1),
+        location=request.form.get('location'),
+        notes=request.form.get('notes'),
+        condition=request.form.get('condition')
+    )
+
     db.session.add(item)
     db.session.commit()
 
-    # optional packout photo
-    file = request.files.get("packout_photo")
-    if file and file.filename and allowed_file(file.filename):
-        rel, fullpath = save_upload(file, app.config["UPLOAD_FOLDER_PACKOUT"])
-        pp = PackoutPhoto(item_id=item.id, filename=rel)
-        db.session.add(pp)
-        db.session.commit()
+    # optional packout photo(s)
+    files = request.files.getlist('packout_photo')
+    for file in files:
+        if file and file.filename and allowed_file(file.filename):
+            rel, abs_path = save_upload(file, app.config['UPLOAD_FOLDER_PACKOUT'])
+            pp = PackoutPhoto(item_id=item.id, filename=os.path.join('uploads', rel).replace('\\', '/'))
+            db.session.add(pp)
+    db.session.commit()
 
-    flash("Packout item added.")
-    return redirect(url_for("view_job", job_id=job.id))
+    flash('Packout item added.')
+    return redirect(url_for('view_job', job_id=job.id))
 
 
-# Delete packout item
-@app.route("/jobs/<int:job_id>/packout/<int:item_id>/delete", methods=["POST"])
+@app.route('/jobs/<int:job_id>/packout/<int:item_id>/delete', methods=['POST'])
 @login_required
 def delete_packout_item(job_id, item_id):
-    if not current_user.is_authenticated or not current_user.is_admin():
-        flash("Admins only.")
-        return redirect(url_for("view_job", job_id=job_id))
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('view_job', job_id=job_id))
+
     item = PackoutItem.query.get_or_404(item_id)
+    # delete associated files from disk
+    for p in item.photos:
+        try:
+            abs_path = os.path.join(STATIC_DIR, p.filename)
+            if os.path.exists(abs_path):
+                os.remove(abs_path)
+        except Exception:
+            logger.exception("Failed to remove packout photo file")
     db.session.delete(item)
     db.session.commit()
-    flash("Packout item deleted.")
-    return redirect(url_for("view_job", job_id=job_id))
+    flash('Packout item deleted.')
+    return redirect(url_for('view_job', job_id=job_id))
 
 
-# Serve static uploaded files (safe)
-@app.route("/static/uploads/<path:filename>")
+# Serve uploaded files
+@app.route('/static/uploads/<path:filename>')
 def uploaded_file(filename):
-    return send_from_directory(os.path.join(STATIC_DIR, "uploads"), filename)
+    return send_from_directory(UPLOAD_ROOT, filename)
 
 
-# Share job report via email with attachments (packout photos + before/after)
-@app.route("/jobs/<int:job_id>/share", methods=["POST"])
+# Share job report via email with attachments
+@app.route('/jobs/<int:job_id>/share', methods=['POST'])
 @login_required
 def share_job(job_id):
     job = Job.query.get_or_404(job_id)
-    to_email = request.form.get("email")
-    if not to_email:
-        flash("Email required.")
-        return redirect(url_for("view_job", job_id=job.id))
+    to_email = request.form.get('email')
 
-    # Build body
-    lines = [
+    if not to_email:
+        flash('Email required.')
+        return redirect(url_for('view_job', job_id=job.id))
+
+    packout_items = job.packout_items.all()
+    contracts = job.contracts.all()
+
+    body_lines = [
         f"Job {job.job_number} - {job.title}",
         f"Client: {job.client_name}",
         f"Address: {job.address}",
@@ -406,103 +968,182 @@ def share_job(job_id):
         "",
         "Packout items:"
     ]
+
     attachments = []
-    for item in job.packout_items:
-        lines.append(f"- {item.name} x{item.quantity} @ {item.location} ({item.notes or ''})")
+    for item in packout_items:
+        body_lines.append(f"- {item.name} x{item.quantity} @ {item.location} ({item.notes or ''})")
         for p in item.photos:
-            full = os.path.join(STATIC_DIR, p.filename)
-            if os.path.exists(full):
-                attachments.append(full)
+            abs_path = os.path.join(STATIC_DIR, p.filename)
+            if os.path.exists(abs_path):
+                attachments.append(abs_path)
 
-    lines.append("")
-    lines.append("Room photos (before/after):")
+    body_lines.append("")
+    body_lines.append("Room photos (before/after):")
     for ph in job.photos:
-        lines.append(f"- {ph.location_label or 'Unknown'} [{ph.before_after or 'n/a'}] {ph.filename}")
-        full = os.path.join(STATIC_DIR, ph.filename)
-        if os.path.exists(full):
-            attachments.append(full)
+        body_lines.append(f"- {ph.location_label or 'Unknown'} [{ph.before_after or 'n/a'}] {ph.filename}")
+        abs_path = os.path.join(STATIC_DIR, ph.filename)
+        if os.path.exists(abs_path):
+            attachments.append(abs_path)
 
-    body = "\n".join(lines)
+    body = "\n".join(body_lines)
 
-    # Send email (attach images)
-    smtp_host = os.environ.get("SMTP_HOST")
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-    smtp_user = os.environ.get("SMTP_USER")
-    smtp_pass = os.environ.get("SMTP_PASS")
-    from_email = os.environ.get("FROM_EMAIL", smtp_user)
-
-    if not (smtp_host and smtp_user and smtp_pass and from_email):
-        flash("Email not configured on server; report not sent but prepared.")
-        return redirect(url_for("view_job", job_id=job.id))
-
-    msg = EmailMessage()
-    msg["Subject"] = f"Job report: {job.job_number}"
-    msg["From"] = from_email
-    msg["To"] = to_email
-    msg.set_content(body)
-    attach_files_to_email(msg, attachments)
-
-    try:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.send_message(msg)
-        flash("Report emailed.")
-    except Exception:
-        logger.exception("Failed to send email")
-        flash("Failed to send email (check server logs).")
-
-    return redirect(url_for("view_job", job_id=job.id))
+    success, msg = send_job_email_with_attachments(job, to_email, f"Job report: {job.job_number}", body, attachments)
+    if success:
+        flash('Job report emailed.')
+    else:
+        flash(f'Email failed: {msg}')
+    return redirect(url_for('view_job', job_id=job.id))
 
 
-# Admin theme update
-@app.route("/admin/theme", methods=["POST"])
+# Archive job
+@app.route('/jobs/<int:job_id>/archive', methods=['POST'])
 @login_required
-def admin_theme_update():
-    if not current_user.is_authenticated or not current_user.is_admin():
-        flash("Admins only.")
-        return redirect(url_for("dashboard"))
-    primary = request.form.get("primary_color")
-    secondary = request.form.get("secondary_color")
-    logo = request.form.get("logo_url")
-    theme = ThemeSettings.query.first()
-    if not theme:
-        theme = ThemeSettings()
-        db.session.add(theme)
-    if primary:
-        theme.primary_color = primary
-    if secondary:
-        theme.secondary_color = secondary
-    if logo:
-        theme.logo_url = logo
+def archive_job(job_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('view_job', job_id=job_id))
+
+    job = Job.query.get_or_404(job_id)
+    job.status = 'archived'
+    if not job.closed_at:
+        job.closed_at = datetime.utcnow()
     db.session.commit()
-    flash("Theme updated.")
-    return redirect(url_for("admin_home"))
+    flash('Job archived.')
+    return redirect(url_for('view_job', job_id=job_id))
 
 
-@app.route("/admin")
+# Contracts management
+@app.route('/contracts/templates', methods=['GET', 'POST'])
 @login_required
-def admin_home():
-    if not current_user.is_authenticated or not current_user.is_admin():
-        flash("Admins only.")
-        return redirect(url_for("dashboard"))
-    jobs = Job.query.order_by(Job.created_at.desc()).limit(10).all()
-    tabs = CustomTab.query.order_by(CustomTab.order).all() if "CustomTab" in globals() else []
-    theme = ThemeSettings.query.first()
-    return render_template("admin.html", jobs=jobs, tabs=tabs, theme=theme)
+def manage_contracts():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        file = request.files.get('contract_file')
+        name = request.form.get('name') or (file.filename if file else '')
+        if file and file.filename:
+            rel, abs_path = save_upload(file, app.config['UPLOAD_FOLDER_CONTRACTS'])
+            tmpl = ContractTemplate(name=name, filename=os.path.join('uploads', rel).replace('\\', '/'))
+            db.session.add(tmpl)
+            db.session.commit()
+            flash('Contract template uploaded.')
+
+    templates = ContractTemplate.query.all()
+    return render_template('contracts.html', templates=templates)
 
 
-# Minimal safe endpoints for other features (placeholders)
-@app.route("/inventory")
+@app.route('/jobs/<int:job_id>/contracts/attach', methods=['POST'])
+@login_required
+def attach_contract(job_id):
+    job = Job.query.get_or_404(job_id)
+    template_id = int(request.form.get('template_id'))
+    jc = JobContract(job_id=job.id, template_id=template_id)
+    db.session.add(jc)
+    db.session.commit()
+    flash('Contract attached to job.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+@app.route('/jobs/<int:job_id>/contracts/<int:contract_id>/sign', methods=['GET', 'POST'])
+def sign_contract(job_id, contract_id):
+    job = Job.query.get_or_404(job_id)
+    jc = JobContract.query.get_or_404(contract_id)
+
+    if request.method == 'POST':
+        signer_name = request.form.get('signer_name')
+        signer_email = request.form.get('signer_email')
+
+        jc.signed = True
+        jc.signed_at = datetime.utcnow()
+        jc.signer_name = signer_name
+        jc.signer_email = signer_email
+
+        signer_lat = request.form.get('lat')
+        signer_lon = request.form.get('lon')
+
+        jc.latitude = float(signer_lat) if signer_lat else None
+        jc.longitude = float(signer_lon) if signer_lon else None
+
+        db.session.commit()
+        flash('Contract signed.')
+        return redirect(url_for('view_job', job_id=job.id))
+
+    return render_template('sign_contract.html', job=job, contract=jc)
+
+
+# Inventory endpoints (minimal)
+@app.route('/inventory')
 @login_required
 def inventory_list():
-    items = []  # keep simple; extend as needed
-    return render_template("inventory.html", items=items)
+    items = InventoryItem.query.order_by(InventoryItem.name).all()
+    return render_template('inventory.html', items=items)
 
 
-# -------------------------
-# Run (local dev)
-# -------------------------
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=False)
- 
+@app.route('/inventory/new', methods=['GET', 'POST'])
+@login_required
+def inventory_new():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('inventory_list'))
+
+    if request.method == 'POST':
+        item = InventoryItem(
+            name=request.form.get('name'),
+            sku=request.form.get('sku'),
+            barcode=request.form.get('barcode'),
+            quantity=int(request.form.get('quantity') or 0),
+            location=request.form.get('location'),
+            notes=request.form.get('notes')
+        )
+        db.session.add(item)
+        db.session.commit()
+        flash('Inventory item created.')
+        return redirect(url_for('inventory_list'))
+
+    return render_template('inventory_edit.html', item=None)
+
+
+@app.route('/inventory/<int:item_id>/edit', methods=['GET', 'POST'])
+@login_required
+def inventory_edit(item_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('inventory_list'))
+
+    item = InventoryItem.query.get_or_404(item_id)
+
+    if request.method == 'POST':
+        item.name = request.form.get('name') or item.name
+        item.sku = request.form.get('sku')
+        item.barcode = request.form.get('barcode')
+        item.quantity = int(request.form.get('quantity') or item.quantity)
+        item.location = request.form.get('location')
+        item.notes = request.form.get('notes')
+        db.session.commit()
+        flash('Inventory item updated.')
+        return redirect(url_for('inventory_list'))
+
+    return render_template('inventory_edit.html', item=item)
+
+
+@app.route('/inventory/<int:item_id>/delete', methods=['POST'])
+@login_required
+def inventory_delete(item_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('inventory_list'))
+
+    item = InventoryItem.query.get_or_404(item_id)
+    db.session.delete(item)
+    db.session.commit()
+    flash('Inventory item deleted.')
+    return redirect(url_for('inventory_list'))
+
+
+# -------------------------------------------------------------------------
+# WSGI ENTRYPOINT
+# -------------------------------------------------------------------------
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '5000')))
