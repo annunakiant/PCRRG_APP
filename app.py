@@ -891,7 +891,6 @@ def share_job(job_id):
         body_lines.append(f"- Template #{c.template_id} [{status}]")
 
     body = "\n".join(body_lines)
-".join(body_lines)
     send_job_email(job, to_email, f"Job report: {job.job_number}", body)
     flash('Job report emailed (if email is configured).')
     return redirect(url_for('view_job', job_id=job.id))
