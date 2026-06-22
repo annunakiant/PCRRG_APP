@@ -1,10 +1,29 @@
-﻿{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block content %}
-<h2>Sign Contract for Job {{ job.job_number }}</h2>
-<p>Template ID: {{ contract.template_id }}</p>
-<form method="post">
-  <div class="mb-2"><label>Your Name</label><input name="signer_name" class="form-control" required></div>
-  <div class="mb-2"><label>Your Email</label><input name="signer_email" class="form-control"></div>
-  <button class="btn btn-primary">Sign</button>
+<h2>Sign Contract for Job {{ job.job_number }} — {{ job.title }}</h2>
+
+<div class="cc-card mb-3">
+  <p><strong>Template ID:</strong> {{ contract.template_id }}</p>
+  <p><strong>Status:</strong> {{ 'Signed' if contract.signed else 'Pending' }}</p>
+</div>
+
+<form method="post" class="cc-card">
+  <div class="mb-2">
+    <label>Signer Name</label>
+    <input class="form-control" type="text" name="signer_name" required>
+  </div>
+  <div class="mb-2">
+    <label>Signer Email</label>
+    <input class="form-control" type="email" name="signer_email" required>
+  </div>
+  <div class="mb-2">
+    <label>Latitude (optional)</label>
+    <input class="form-control" type="text" name="lat">
+  </div>
+  <div class="mb-2">
+    <label>Longitude (optional)</label>
+    <input class="form-control" type="text" name="lon">
+  </div>
+  <button class="btn btn-primary">Sign Contract</button>
 </form>
 {% endblock %}

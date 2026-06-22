@@ -1,53 +1,50 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
-<h2>Packout Items for {{ job.job_number }} - {{ job.title }}</h2>
+<h2>Packout Items for Job {{ job.job_number }} — {{ job.title }}</h2>
 
-<section style="background:white;padding:12px;border-radius:8px;margin-bottom:12px;">
-  <h3>Add Packout Item</h3>
-  <form method="post" action="{{ url_for('add_packout_item', job_id=job.id) }}" enctype="multipart/form-data">
-    <div class="row"><label>Item name</label><input name="name" required></div>
-    <div class="row"><label>Quantity</label><input name="quantity" type="number" value="1" min="1"></div>
-    <div class="row"><label>Location (room)</label><input name="location"></div>
-    <div class="row"><label>Condition</label><input name="condition"></div>
-    <div class="row"><label>Notes</label><input name="notes"></div>
-    <div class="row"><label>Attach photo (optional)</label><input name="packout_photo" type="file" accept="image/*" capture="environment"></div>
-    <button type="submit" class="btn">Add packout item</button>
-  </form>
-</section>
+<form method="post" action="{{ url_for('packout', job_id=job.id) }}" enctype="multipart/form-data" class="cc-card">
+  <div class="mb-2">
+    <label>Item Name</label>
+    <input class="form-control" type="text" name="name" required>
+  </div>
+  <div class="mb-2">
+    <label>Location</label>
+    <input class="form-control" type="text" name="location">
+  </div>
+  <div class="mb-2">
+    <label>Quantity</label>
+    <input class="form-control" type="number" name="quantity" min="1" value="1">
+  </div>
+  <div class="mb-2">
+    <label>Condition</label>
+    <input class="form-control" type="text" name="condition">
+  </div>
+  <div class="mb-2">
+    <label>Photo</label>
+    <input class="form-control" type="file" name="photo" accept="image/*">
+  </div>
+  <button class="btn btn-primary">Add Packout Item</button>
+</form>
 
-<section style="background:white;padding:12px;border-radius:8px;">
-  <h3>Packout Items</h3>
-  {% if items %}
-    <table><thead><tr><th>Item</th><th>Qty</th><th>Location</th><th>Condition</th><th>Photos</th><th>Actions</th></tr></thead><tbody>
-      {% for item in items %}
-        <tr>
-          <td>{{ item.name }}</td>
-          <td>{{ item.quantity }}</td>
-          <td>{{ item.location }}</td>
-          <td>{{ item.condition }}</td>
-          <td>
-            {% if item.photos.count() > 0 %}
-              {% for p in item.photos %}
-                <img class="thumb" src="/static/{{ p.filename }}" alt="packout photo">
-              {% endfor %}
-            {% else %}
-              No photo
-            {% endif %}
-          </td>
-          <td>
-            {% if current_user.is_authenticated and current_user.role == 'admin' %}
-              <form method="post" action="{{ url_for('delete_packout_item', job_id=job.id, item_id=item.id) }}" onsubmit="return confirm('Delete this packout item?');">
-                <button type="submit" class="btn" style="background:#c0392b;">Delete</button>
-              </form>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody></table>
+<div class="cc-card">
+  <h3>Existing Packout Items</h3>
+  {% if job.packout_items.count() %}
+    {% for item in job.packout_items.all() %}
+      <div class="cc-card">
+        <h5>{{ item.name }} (x{{ item.quantity }})</h5>
+        <p><strong>Location:</strong> {{ item.location or 'N/A' }} | <strong>Condition:</strong> {{ item.condition or 'N/A' }}</p>
+        {% if item.photo_path %}
+          <img src="{{ url_for('static', filename=item.photo_path) }}" style="max-height:200px;border-radius:4px;">
+        {% endif %}
+        {% if is_admin %}
+          <form method="post" action="{{ url_for('packout_delete', item_id=item.id) }}">
+            <button class="btn btn-sm btn-outline-danger mt-1">Delete</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endfor %}
   {% else %}
     <p>No packout items yet.</p>
   {% endif %}
-</section>
-
-<a class="btn" href="{{ url_for('view_job', job_id=job.id) }}">Back to job</a>
+</div>
 {% endblock %}

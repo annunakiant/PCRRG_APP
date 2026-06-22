@@ -1,26 +1,22 @@
-<html lang='en'>
+<html lang="en">
 <head>
-  <meta charset='utf-8'>
+  <meta charset="utf-8">
   <title>PCRRG FieldOps</title>
-  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Fonts -->
-  <link href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' rel='stylesheet'>
-
-  <!-- Bootstrap -->
-  <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <style>
-    /* COLOR SYSTEM — Dark + Teal (Soft Glow) */
     :root {
-      --primary: #2ec4b6;        /* Soft teal */
-      --primary-soft: #3fd4c6;   /* Hover */
-      --primary-glow: rgba(46,196,182,0.35); /* Soft glow */
-      --bg: #0e0f10;             /* Matte dark */
-      --bg2: #141517;            /* Card dark */
-      --border: #1f2023;         /* Subtle border */
-      --text: #e6e6e6;           /* Light text */
-      --text-soft: #aeb4b8;      /* Soft text */
+      --primary: {{ theme.primary_color if theme and theme.primary_color else "#2ec4b6" }};
+      --primary-soft: #3fd4c6;
+      --primary-glow: rgba(46,196,182,0.35);
+      --bg: #0e0f10;
+      --bg2: #141517;
+      --border: #1f2023;
+      --text: #e6e6e6;
+      --text-soft: #aeb4b8;
     }
 
     body {
@@ -30,7 +26,6 @@
       font-size: 15px;
     }
 
-    /* TOP BAR */
     .topbar {
       background: #0b0c0d;
       padding: 0.75rem 1rem;
@@ -54,13 +49,13 @@
       border-radius: 6px;
     }
 
-    /* NAVIGATION */
     .app-nav {
       background: #111214;
       border-bottom: 1px solid var(--border);
       padding: 0.5rem 1rem;
       display: flex;
-      gap: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       font-weight: 500;
     }
 
@@ -84,7 +79,6 @@
       box-shadow: 0 0 8px var(--primary-glow);
     }
 
-    /* CARDS */
     .cc-card {
       background: var(--bg2);
       border: 1px solid var(--border);
@@ -94,7 +88,6 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     }
 
-    /* BUTTONS — Soft Glow Teal */
     .btn-primary {
       background-color: var(--primary) !important;
       border-color: var(--primary) !important;
@@ -121,7 +114,6 @@
       color: #fff !important;
     }
 
-    /* INPUTS */
     .form-control, .form-select {
       background: #1a1b1d;
       border: 1px solid #2a2b2e;
@@ -136,7 +128,6 @@
       box-shadow: 0 0 8px var(--primary-glow);
     }
 
-    /* TABLES */
     table {
       color: var(--text);
     }
@@ -151,35 +142,35 @@
     }
   </style>
 </head>
-
 <body>
-
-<div class='topbar'>
-  <div class='topbar-logo'>
-    {% if theme.logo_url %}
-      <img src='{{ theme.logo_url }}'>
+<div class="topbar">
+  <div class="topbar-logo">
+    {% if theme and theme.logo_url %}
+      <img src="{{ theme.logo_url }}">
     {% endif %}
     PCRRG FieldOps
   </div>
   <div>
     {{ current_user.name or current_user.username }} |
-    <a href='{{ url_for('logout') }}' class='text-light'>Logout</a>
+    <a href="{{ url_for('logout') }}" class="text-light">Logout</a>
   </div>
 </div>
 
-<div class='app-nav'>
-  <a href='{{ url_for('dashboard') }}' class='{% if request.endpoint=="dashboard" %}active{% endif %}'>Dashboard</a>
-  <a href='{{ url_for('inventory_list') }}' class='{% if "inventory" in request.endpoint %}active{% endif %}'>Inventory</a>
-  <a href='{{ url_for('new_job') }}' class='{% if request.endpoint=="new_job" %}active{% endif %}'>New Job</a>
-  <a href='{{ url_for('admin_home') }}' class='{% if "admin" in request.endpoint %}active{% endif %}'>Admin</a>
-  <a href='{{ url_for('admin_task_templates') }}' class='{% if "task" in request.endpoint %}active{% endif %}'>Tasks</a>
-  <a href='{{ url_for('manage_contracts') }}' class='{% if "contract" in request.endpoint %}active{% endif %}'>Contracts</a>
+<div class="app-nav">
+  <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint=='dashboard' %}active{% endif %}">Dashboard</a>
+  <a href="{{ url_for('inventory_list') }}" class="{% if 'inventory' in request.endpoint %}active{% endif %}">Inventory</a>
+  <a href="{{ url_for('new_job') }}" class="{% if request.endpoint=='new_job' %}active{% endif %}">New Job</a>
+  {% if is_admin %}
+    <a href="{{ url_for('admin_home') }}" class="{% if 'admin' in request.endpoint %}active{% endif %}">Admin</a>
+    <a href="{{ url_for('admin_task_templates') }}" class="{% if 'task' in request.endpoint %}active{% endif %}">Tasks</a>
+    <a href="{{ url_for('manage_contracts') }}" class="{% if 'contract' in request.endpoint %}active{% endif %}">Contracts</a>
+  {% endif %}
 </div>
 
-<div class='container-fluid mt-3'>
+<div class="container-fluid mt-3">
   {% block content %}{% endblock %}
 </div>
 
-<script src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js'></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

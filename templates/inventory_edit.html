@@ -1,24 +1,32 @@
-﻿{% extends "base.html" %}
-{% block title %}Edit Inventory Item{% endblock %}
-{% block subtitle %}Update equipment & materials{% endblock %}
+{% extends "base.html" %}
 {% block content %}
-<div class="card" style="max-width:520px;margin:0 auto;">
-  <div class="card-title">Inventory Item</div>
-  <form method="post" style="font-size:0.85rem;">
+<h2>{{ 'New Inventory Item' if not item else 'Edit Inventory Item' }}</h2>
+
+<form method="post" class="cc-card">
+  <div class="mb-2">
     <label>Name</label>
-    <input name="name" value="{{ item.name }}" required
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Quantity</label>
-    <input name="quantity" type="number" value="{{ item.quantity }}"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <label>Location</label>
-    <input name="location" value="{{ item.location }}"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <input class="form-control" type="text" name="name" value="{{ item.name if item else '' }}" required>
+  </div>
+  <div class="mb-2">
+    <label>SKU</label>
+    <input class="form-control" type="text" name="sku" value="{{ item.sku if item else '' }}">
+  </div>
+  <div class="mb-2">
     <label>Barcode</label>
-    <input name="barcode" value="{{ item.barcode }}"
-           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
-    <button class="btn btn-primary" type="submit">Save</button>
-    <a href="{{ url_for('inventory_list') }}" class="btn btn-outline" style="margin-left:0.5rem;">Back</a>
-  </form>
-</div>
+    <input class="form-control" type="text" name="barcode" value="{{ item.barcode if item else '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Quantity</label>
+    <input class="form-control" type="number" name="quantity" value="{{ item.quantity if item else 0 }}">
+  </div>
+  <div class="mb-2">
+    <label>Location</label>
+    <input class="form-control" type="text" name="location" value="{{ item.location if item else '' }}">
+  </div>
+  <div class="mb-2">
+    <label>Notes</label>
+    <textarea class="form-control" name="notes">{{ item.notes if item else '' }}</textarea>
+  </div>
+  <button class="btn btn-primary">Save</button>
+</form>
 {% endblock %}

@@ -1,38 +1,42 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
-
 <h2>Job {{ job.job_number }} — {{ job.title }}</h2>
 <p>
-  <strong>Client:</strong> {{ job.client_name or "N/A" }} &nbsp; | &nbsp;
-  <strong>Address:</strong> {{ job.address or "N/A" }}
+  <strong>Client:</strong> {{ job.client_name or "N/A" }} |
+  <strong>Address:</strong> {{ job.address or "N/A" }} |
+  <strong>Status:</strong> {{ job.status }}
 </p>
 
-<!-- ========================================================= -->
-<!-- ROOM PHOTOS -->
-<!-- ========================================================= -->
-<section class="card p-3 mb-3">
-  <h3>Room Photos (Before / After)</h3>
+{% if is_admin %}
+<div class="mb-2">
+  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_job', job_id=job.id) }}">Edit Job</a>
+  <form method="post" action="{{ url_for('delete_job', job_id=job.id) }}" style="display:inline;">
+    <button class="btn btn-sm btn-outline-danger">Delete Job</button>
+  </form>
+</div>
+{% endif %}
+
+<!-- PHOTOS -->
+<section class="cc-card">
+  <h3>Room Photos</h3>
 
   <form method="post" action="{{ url_for('upload_photo', job_id=job.id) }}" enctype="multipart/form-data">
     <div class="mb-2">
       <label>Photo</label>
-      <input type="file" name="photo" accept="image/*" capture="environment" required>
+      <input class="form-control" type="file" name="photo" accept="image/*" capture="environment" required>
     </div>
-
     <div class="mb-2">
-      <label>Location label</label>
-      <input type="text" name="location_label" placeholder="Kitchen, Bedroom...">
+      <label>Location</label>
+      <input class="form-control" type="text" name="location_label">
     </div>
-
     <div class="mb-2">
       <label>Before / After</label>
-      <select name="before_after">
+      <select class="form-select" name="before_after">
         <option value="">--</option>
         <option value="before">Before</option>
         <option value="after">After</option>
       </select>
     </div>
-
     <button class="btn btn-primary">Upload Photo</button>
   </form>
 
@@ -40,127 +44,154 @@
     {% if photos %}
       <div style="display:flex;flex-wrap:wrap;gap:12px;">
         {% for p in photos %}
-          <div style="background:#fafafa;padding:8px;border-radius:6px;border:1px solid #eee;width:180px;">
-            <div style="font-weight:600;">
-              {{ p.location_label or 'Room' }}
-              <small class="text-muted">[{{ p.before_after or 'n/a' }}]</small>
-            </div>
-
-            <img src="/static/{{ p.filename }}" style="width:100%;border-radius:4px;margin-top:6px;">
-
-            <div style="font-size:12px;color:#666;margin-top:6px;">
-              Uploaded: {{ p.uploaded_at.strftime('%Y-%m-%d %H:%M') if p.uploaded_at else '' }}
-            </div>
+        <div style="background:#1a1b1d;padding:8px;border-radius:6px;border:1px solid #2a2b2e;width:180px;">
+          <div style="font-weight:600;">
+            {{ p.location_label or 'Room' }}
+            <small class="text-muted">[{{ p.before_after or 'n/a' }}]</small>
           </div>
+          <img src="/static/{{ p.filename }}" style="width:100%;border-radius:4px;margin-top:6px;">
+          <div style="font-size:12px;color:#666;margin-top:6px;">
+            {{ p.uploaded_at.strftime('%Y-%m-%d %H:%M') if p.uploaded_at else '' }}
+          </div>
+
+          {% if is_admin %}
+          <form method="post" action="{{ url_for('delete_photo', photo_id=p.id, job_id=job.id) }}">
+            <button class="btn btn-sm btn-outline-danger mt-1">Delete</button>
+          </form>
+          {% endif %}
+        </div>
         {% endfor %}
       </div>
     {% else %}
-      <p>No room photos yet.</p>
+      <p>No photos yet.</p>
     {% endif %}
   </div>
 </section>
 
-<!-- ========================================================= -->
-<!-- PACKOUT ITEMS -->
-<!-- ========================================================= -->
-<section class="card p-3 mb-3">
+<!-- PACKOUTS -->
+<section class="cc-card">
   <h3>Packout Items</h3>
 
-  {% if packout_items %}
-    {% for item in packout_items %}
-      <div class="card mb-2 p-2">
+  <form method="post" action="{{ url_for('add_packout_item', job_id=job.id) }}" enctype="multipart/form-data">
+    <div class="mb-2"><label>Name</label><input class="form-control" name="name" required></div>
+    <div class="mb-2"><label>Location</label><input class="form-control" name="location"></div>
+    <div class="mb-2"><label>Quantity</label><input class="form-control" type="number" name="quantity" value="1"></div>
+    <div class="mb-2"><label>Condition</label><input class="form-control" name="condition"></div>
+    <div class="mb-2"><label>Notes</label><textarea class="form-control" name="notes"></textarea></div>
+    <div class="mb-2"><label>Photos</label><input class="form-control" type="file" name="packout_photo" multiple></div>
+    <button class="btn btn-primary">Add Packout Item</button>
+  </form>
+
+  <div class="mt-3">
+    {% if packout_items %}
+      {% for item in packout_items %}
+      <div class="cc-card">
         <h5>{{ item.name }} (x{{ item.quantity }})</h5>
-        <p>
-          <strong>Location:</strong> {{ item.location or 'N/A' }} |
-          <strong>Condition:</strong> {{ item.condition or 'N/A' }}
-        </p>
+        <p><strong>Location:</strong> {{ item.location or 'N/A' }} |
+           <strong>Condition:</strong> {{ item.condition or 'N/A' }}</p>
+        <p>{{ item.notes }}</p>
 
         {% if item.photos.count() > 0 %}
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            {% for ph in item.photos %}
-              <img src="/static/{{ ph.filename }}" style="max-height:120px;border-radius:4px;">
-            {% endfor %}
-          </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          {% for ph in item.photos %}
+          <img src="/static/{{ ph.filename }}" style="max-height:120px;border-radius:4px;">
+          {% endfor %}
+        </div>
         {% endif %}
 
-        <p>{{ item.notes }}</p>
+        {% if is_admin %}
+        <form method="post" action="{{ url_for('delete_packout_item', job_id=job.id, item_id=item.id) }}">
+          <button class="btn btn-sm btn-outline-danger mt-1">Delete Item</button>
+        </form>
+        {% endif %}
       </div>
-    {% endfor %}
-  {% else %}
-    <p>No packout items yet.</p>
-  {% endif %}
+      {% endfor %}
+    {% else %}
+      <p>No packout items yet.</p>
+    {% endif %}
+  </div>
 </section>
 
-<!-- ========================================================= -->
 <!-- CONTRACTS -->
-<!-- ========================================================= -->
-<section class="card p-3 mb-3">
+<section class="cc-card">
   <h3>Contracts</h3>
 
   <form method="post" action="{{ url_for('attach_contract', job_id=job.id) }}" class="mb-2">
-    <select name="template_id" required>
-      <option value="">Select template...</option>
-      {% for t in templates %}
-        <option value="{{ t.id }}">{{ t.name }}</option>
-      {% endfor %}
-    </select>
-    <button class="btn btn-primary btn-sm">Attach</button>
+    <div class="row g-2">
+      <div class="col-md-6">
+        <select class="form-select" name="template_id" required>
+          <option value="">Select template...</option>
+          {% for t in templates %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary btn-sm w-100">Attach</button>
+      </div>
+    </div>
   </form>
 
-  <ul>
+  <ul class="list-unstyled">
     {% for c in contracts %}
-      <li>
-        Template #{{ c.template_id }} — {{ 'Signed' if c.signed else 'Pending' }}
-        {% if not c.signed %}
-          <a class="btn btn-sm btn-success"
-             href="{{ url_for('sign_contract', job_id=job.id, contract_id=c.id) }}">
-            Sign
-          </a>
-        {% endif %}
-      </li>
+    <li class="mb-1">
+      Template #{{ c.template_id }} — {{ 'Signed' if c.signed else 'Pending' }}
+      {% if not c.signed %}
+      <a class="btn btn-sm btn-success"
+         href="{{ url_for('sign_contract', job_id=job.id, contract_id=c.id) }}">
+        Sign
+      </a>
+      {% endif %}
+    </li>
     {% endfor %}
   </ul>
 </section>
 
-<!-- ========================================================= -->
 <!-- TASKS -->
-<!-- ========================================================= -->
-<section class="card p-3 mb-3">
+<section class="cc-card">
   <h3>Tasks</h3>
 
   <form method="post" action="{{ url_for('add_job_task', job_id=job.id) }}" class="mb-2">
-    <select name="template_id">
-      <option value="">Custom</option>
-      {% for t in task_templates %}
-        <option value="{{ t.id }}">{{ t.name }}</option>
-      {% endfor %}
-    </select>
-
-    <input type="text" name="label" placeholder="Task label">
-    <button class="btn btn-primary btn-sm">Add</button>
+    <div class="row g-2">
+      <div class="col-md-4">
+        <select class="form-select" name="template_id">
+          <option value="">Custom</option>
+          {% for t in task_templates %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <input class="form-control" type="text" name="label" placeholder="Task label">
+      </div>
+      <div class="col-md-4">
+        <button class="btn btn-primary btn-sm w-100">Add Task</button>
+      </div>
+    </div>
   </form>
 
-  <ul>
+  <ul class="list-unstyled">
     {% for t in tasks %}
-      <li>
-        {{ t.label }} — {{ 'Done' if t.completed else 'Pending' }}
-        <form method="post"
-              action="{{ url_for('toggle_job_task', job_id=job.id, task_id=t.id) }}"
-              style="display:inline;">
-          <button class="btn btn-sm btn-outline-secondary">Toggle</button>
-        </form>
-      </li>
+    <li class="mb-1">
+      {{ t.label }} — {{ 'Done' if t.completed else 'Pending' }}
+      <form method="post"
+            action="{{ url_for('toggle_job_task', job_id=job.id, task_id=t.id) }}"
+            style="display:inline;">
+        <button class="btn btn-sm btn-outline-secondary">Toggle</button>
+      </form>
+    </li>
     {% endfor %}
   </ul>
 </section>
 
-<!-- ========================================================= -->
-<!-- SHARE JOB -->
-<!-- ========================================================= -->
-<section class="card p-3 mb-3">
+<!-- SHARE -->
+<section class="cc-card">
   <h3>Share Job</h3>
   <form method="post" action="{{ url_for('share_job', job_id=job.id) }}">
-    <input type="email" name="email" placeholder="Recipient email" required>
+    <div class="mb-2">
+      <label>Email</label>
+      <input class="form-control" type="email" name="email" required>
+    </div>
     <button class="btn btn-primary">Send Report</button>
   </form>
 </section>

@@ -1,17 +1,87 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
-<h2>Admin Control Center</h2>
-<section style="background:white;padding:12px;border-radius:8px;margin-bottom:12px;">
-  <h3>Theme / Branding</h3>
+<h2>Admin Panel</h2>
+
+<div class="cc-card">
+  <h3>Admin Tools</h3>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-sm btn-primary" href="{{ url_for('admin_users') }}">Manage Users</a>
+    <a class="btn btn-sm btn-primary" href="{{ url_for('admin_users_new') }}">Create User</a>
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin_tabs') }}">Custom Tabs</a>
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin_task_templates') }}">Task Templates</a>
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('manage_contracts') }}">Contract Templates</a>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="cc-card">
+      <h3>Recent Jobs</h3>
+      <ul class="list-unstyled">
+        {% for j in jobs %}
+          <li class="mb-1">
+            <a href="{{ url_for('view_job', job_id=j.id) }}">{{ j.job_number }} — {{ j.title }}</a>
+            <small class="text-muted d-block">
+              {{ j.status }} · {{ j.created_at.strftime('%Y-%m-%d') if j.created_at else '' }}
+            </small>
+            <div class="mt-1">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_job', job_id=j.id) }}">Edit</a>
+              <form method="post" action="{{ url_for('delete_job', job_id=j.id) }}" style="display:inline;">
+                <button class="btn btn-sm btn-outline-danger">Delete</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      <a class="btn btn-sm btn-primary" href="{{ url_for('new_job') }}">New Job</a>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="cc-card">
+      <h3>Inventory Snapshot</h3>
+      <ul class="list-unstyled">
+        {% for i in inventory_items %}
+          <li>{{ i.name }} ({{ i.quantity }}) — {{ i.location or 'N/A' }}</li>
+        {% endfor %}
+      </ul>
+      <a class="btn btn-sm btn-primary" href="{{ url_for('inventory_list') }}">View Inventory</a>
+    </div>
+  </div>
+</div>
+
+<div class="cc-card">
+  <h3>Theme Settings</h3>
   <form method="post" action="{{ url_for('admin_theme_update') }}">
-    <div class="row"><label>Primary color</label><input type="color" name="primary_color" value="{{ theme.primary_color or '#1E88E5' }}"></div>
-    <div class="row"><label>Secondary color</label><input type="color" name="secondary_color" value="{{ theme.secondary_color or '#FFC107' }}"></div>
-    <div class="row"><label>Logo URL</label><input type="text" name="logo_url" value="{{ theme.logo_url or '/static/logo.png' }}"></div>
-    <button type="submit" class="btn">Save Theme</button>
+    <div class="mb-2">
+      <label>Primary Color</label>
+      <input class="form-control" type="text" name="primary_color" value="{{ theme.primary_color if theme else '#2ec4b6' }}">
+    </div>
+    <div class="mb-2">
+      <label>Secondary Color</label>
+      <input class="form-control" type="text" name="secondary_color" value="{{ theme.secondary_color if theme else '#FFC107' }}">
+    </div>
+    <div class="mb-2">
+      <label>Logo URL</label>
+      <input class="form-control" type="text" name="logo_url" value="{{ theme.logo_url if theme else '/static/logo.png' }}">
+    </div>
+    <button class="btn btn-primary btn-sm">Save Theme</button>
   </form>
-</section>
-<section style="background:white;padding:12px;border-radius:8px;">
-  <h3>Recent Jobs</h3>
-  <ul>{% for j in jobs %}<li><a href="{{ url_for('view_job', job_id=j.id) }}">{{ j.job_number }} - {{ j.title }}</a></li>{% else %}<li>No jobs yet</li>{% endfor %}</ul>
-</section>
+</div>
+
+<div class="cc-card">
+  <h3>Active Sessions</h3>
+  {% if active_sessions %}
+    <ul class="list-unstyled">
+      {% for s in active_sessions %}
+        <li>
+          User #{{ s.user_id }} · Clocked in at
+          {{ s.clock_in_at.strftime('%Y-%m-%d %H:%M') if s.clock_in_at else '' }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No active sessions.</p>
+  {% endif %}
+</div>
 {% endblock %}

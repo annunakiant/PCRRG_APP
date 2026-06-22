@@ -1,13 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Dashboard</h2>
-<p>Open: {{ jobs_open }} | Closed: {{ jobs_closed }} | Archived: {{ jobs_archived }}</p>
-<h3>Recent Jobs</h3>
-<ul>
-  {% for j in recent_jobs %}
-    <li><a href="{{ url_for('view_job', job_id=j.id) }}">{{ j.job_number }} - {{ j.title }}</a></li>
+
+<div class="row mb-3">
+  <div class="col-6 col-md-3 mb-2">
+    <div class="cc-card text-center">
+      <div class="fw-bold">Open Jobs</div>
+      <div class="fs-4">{{ jobs_open }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 mb-2">
+    <div class="cc-card text-center">
+      <div class="fw-bold">Closed Jobs</div>
+      <div class="fs-4">{{ jobs_closed }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 mb-2">
+    <div class="cc-card text-center">
+      <div class="fw-bold">Archived Jobs</div>
+      <div class="fs-4">{{ jobs_archived }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 mb-2">
+    <div class="cc-card text-center">
+      <div class="fw-bold">Inventory Items</div>
+      <div class="fs-4">{{ inventory_count }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="cc-card">
+  <h3>Recent Jobs</h3>
+  <ul class="list-unstyled">
+    {% for j in recent_jobs %}
+      <li class="mb-1">
+        <a href="{{ url_for('view_job', job_id=j.id) }}">{{ j.job_number }} — {{ j.title }}</a>
+        <small class="text-muted d-block">
+          {{ j.status }} · {{ j.created_at.strftime('%Y-%m-%d') if j.created_at else '' }}
+        </small>
+      </li>
+    {% endfor %}
+  </ul>
+  <a class="btn btn-sm btn-primary" href="{{ url_for('new_job') }}">New Job</a>
+</div>
+
+<div class="cc-card">
+  <h3>Active Sessions</h3>
+  {% if active_sessions %}
+    <ul class="list-unstyled">
+      {% for s in active_sessions %}
+        <li>
+          User #{{ s.user_id }} · Clocked in at
+          {{ s.clock_in_at.strftime('%Y-%m-%d %H:%M') if s.clock_in_at else '' }}
+        </li>
+      {% endfor %}
+    </ul>
   {% else %}
-    <li>No jobs yet</li>
-  {% endfor %}
-</ul>
+    <p>No active sessions.</p>
+  {% endif %}
+</div>
 {% endblock %}
