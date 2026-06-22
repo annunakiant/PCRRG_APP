@@ -1,0 +1,48 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h2>Advanced Admin Control Center</h2>
+
+<h3>Theme</h3>
+<form method="post" action="{{ url_for('advanced_admin.theme_update') }}" class="mb-3">
+  <div class="mb-2">
+    <label>Primary color</label>
+    <input type="text" name="primary_color" class="form-control" value="{{ theme.primary_color }}">
+  </div>
+  <div class="mb-2">
+    <label>Secondary color</label>
+    <input type="text" name="secondary_color" class="form-control" value="{{ theme.secondary_color }}">
+  </div>
+  <div class="mb-2">
+    <label>Logo URL</label>
+    <input type="text" name="logo_url" class="form-control" value="{{ theme.logo_url }}">
+  </div>
+  <button class="btn btn-primary btn-sm">Save Theme</button>
+</form>
+
+<h3>Users</h3>
+<table class="table table-sm">
+  <thead>
+    <tr><th>Username</th><th>Name</th><th>Role</th><th>Change</th></tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.username }}</td>
+      <td>{{ u.name }}</td>
+      <td>{{ u.role }}</td>
+      <td>
+        <form method="post" action="{{ url_for('advanced_admin.user_role', user_id=u.id) }}">
+          <select name="role" class="form-select form-select-sm">
+            <option value="tech" {% if u.role == 'tech' %}selected{% endif %}>Tech</option>
+            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+          </select>
+          <button class="btn btn-sm btn-outline-primary mt-1">Update</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p><a href="{{ url_for('advanced_admin.tabs') }}" class="btn btn-outline-secondary btn-sm">Manage Tabs</a></p>
+{% endblock %}

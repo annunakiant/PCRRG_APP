@@ -1,0 +1,39 @@
+﻿{% extends "base.html" %}
+{% block title %}Packout Report{% endblock %}
+{% block subtitle %}{{ job.job_number }} – {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-title">Packout Items</div>
+  <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+    <thead>
+      <tr style="border-bottom:1px solid #1f2937;">
+        <th style="text-align:left;padding:0.25rem;">Item</th>
+        <th style="text-align:left;padding:0.25rem;">Location</th>
+        <th style="text-align:left;padding:0.25rem;">Count</th>
+        <th style="text-align:left;padding:0.25rem;">Condition</th>
+        <th style="text-align:left;padding:0.25rem;">Photos</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in packout.items %}
+      <tr>
+        <td style="padding:0.25rem;">{{ i.item }}</td>
+        <td style="padding:0.25rem;">{{ i.location }}</td>
+        <td style="padding:0.25rem;">{{ i.count }}</td>
+        <td style="padding:0.25rem;">{{ i.condition }}</td>
+        <td style="padding:0.25rem;">
+          {% for photo in i.photos %}
+          <a href="{{ url_for('packout_photo', photo_id=photo.id) }}" style="margin-right:0.25rem;">Photo {{ loop.index }}</a>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="margin-top:0.75rem;">
+    <a href="{{ url_for('packout_edit', packout_id=packout.id) }}" class="btn btn-outline">Edit</a>
+    <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn btn-outline" style="margin-left:0.5rem;">Back to Job Folder</a>
+  </div>
+</div>
+{% endblock %}

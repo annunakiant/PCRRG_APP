@@ -1,0 +1,24 @@
+﻿{% extends "base.html" %}
+{% block title %}Edit Inventory Item{% endblock %}
+{% block subtitle %}Update equipment & materials{% endblock %}
+{% block content %}
+<div class="card" style="max-width:520px;margin:0 auto;">
+  <div class="card-title">Inventory Item</div>
+  <form method="post" style="font-size:0.85rem;">
+    <label>Name</label>
+    <input name="name" value="{{ item.name }}" required
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Quantity</label>
+    <input name="quantity" type="number" value="{{ item.quantity }}"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Location</label>
+    <input name="location" value="{{ item.location }}"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <label>Barcode</label>
+    <input name="barcode" value="{{ item.barcode }}"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.5rem;">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a href="{{ url_for('inventory_list') }}" class="btn btn-outline" style="margin-left:0.5rem;">Back</a>
+  </form>
+</div>
+{% endblock %}

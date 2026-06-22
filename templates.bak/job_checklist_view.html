@@ -1,0 +1,18 @@
+﻿{% extends "base.html" %}
+{% block title %}Checklist{% endblock %}
+{% block subtitle %}{{ checklist.name }} – {{ job.job_number }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-title">Checklist</div>
+  <div class="card-sub">Hybrid mode: mobile = simple, desktop = table</div>
+
+  <div id="checklist-container"
+       data-job-id="{{ job.id }}"
+       data-checklist-id="{{ checklist.id }}"
+       data-user="{{ current_user.username }}">
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/task.js') }}"></script>
+{% endblock %}

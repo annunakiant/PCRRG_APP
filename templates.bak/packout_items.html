@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Packout Items for {{ job.job_number }} - {{ job.title }}</h2>
+
+<form method="post" action="{{ url_for('add_packout_item', job_id=job.id) }}" enctype="multipart/form-data">
+  <div><label>Item name</label><input name="name" required></div>
+  <div><label>Quantity</label><input name="quantity" type="number" value="1"></div>
+  <div><label>Location</label><input name="location"></div>
+  <div><label>Condition</label><input name="condition"></div>
+  <div><label>Notes</label><input name="notes"></div>
+  <div><label>Photo</label><input name="packout_photo" type="file" accept="image/*" capture="environment"></div>
+  <button type="submit" class="btn">Add packout item</button>
+</form>
+
+<hr>
+<table>
+  <thead><tr><th>Item</th><th>Qty</th><th>Location</th><th>Photos</th><th>Actions</th></tr></thead>
+  <tbody>
+    {% for item in items %}
+      <tr>
+        <td>{{ item.name }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.location }}</td>
+        <td>
+          {% for p in item.photos %}
+            <img src="{{ url_for('uploaded_file', filename=p.filename.split('uploads/')[1]) }}" style="max-width:80px;">
+          {% else %}
+            No photo
+          {% endfor %}
+        </td>
+        <td>
+          {% if current_user.is_authenticated and current_user.role == 'admin' %}
+            <form method="post" action="{{ url_for('delete_packout_item', job_id=job.id, item_id=item.id) }}" onsubmit="return confirm('Delete?');">
+              <button type="submit" class="btn">Delete</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<a href="{{ url_for('view_job', job_id=job.id) }}" class="btn">Back to job</a>
+{% endblock %}

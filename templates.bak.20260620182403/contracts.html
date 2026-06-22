@@ -1,0 +1,17 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h2>Contract Templates</h2>
+<form method="post" enctype="multipart/form-data" class="mb-3">
+  <div class="mb-2"><label>Name</label><input name="name" class="form-control"></div>
+  <div class="mb-2"><label>File</label><input type="file" name="contract_file" class="form-control" required></div>
+  <button class="btn btn-primary btn-sm">Upload</button>
+</form>
+<table class="table table-sm">
+  <thead><tr><th>Name</th><th>File</th></tr></thead>
+  <tbody>
+    {% for t in templates %}
+    <tr><td>{{ t.name }}</td><td>{{ t.filename }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

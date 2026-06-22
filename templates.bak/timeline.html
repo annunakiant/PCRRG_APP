@@ -1,0 +1,19 @@
+﻿{% extends "base.html" %}
+{% block title %}Timeline – {{ job.job_number }}{% endblock %}
+{% block subtitle %}CompanyCam-style activity feed{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-title">Activity</div>
+  <div class="card-sub">Photos, packout, contracts, tasks</div>
+  <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+    {% for e in events %}
+    <li style="margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:1px solid #1f2937;">
+      <div style="font-size:0.8rem;color:#9ca3af;">
+        {{ e.timestamp.strftime('%Y-%m-%d %H:%M') if e.timestamp }} · {{ e.type|capitalize }}
+      </div>
+      <div style="font-weight:600;">{{ e.label }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

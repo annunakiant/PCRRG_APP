@@ -1,0 +1,63 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<div class='row'>
+  <div class='col-12'>
+    <div class='cc-card'>
+      <h4>Templates Center (Hybrid)</h4>
+      <p class='text-muted'>Manage job templates, packout profiles, contract bundles, and task presets here.</p>
+    </div>
+  </div>
+
+  <div class='col-md-6'>
+    <div class='cc-card'>
+      <h5>Job Templates</h5>
+      <ul>
+        {% for t in job_templates %}
+          <li>{{ t.name }} ({{ t.job_type or 'General' }})</li>
+        {% else %}
+          <li class='text-muted'>No templates yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class='col-md-6'>
+    <div class='cc-card'>
+      <h5>Packout Profiles</h5>
+      <ul>
+        {% for p in packouts %}
+          <li>{{ p.name }}</li>
+        {% else %}
+          <li class='text-muted'>No packout profiles yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class='col-md-6'>
+    <div class='cc-card'>
+      <h5>Contract Bundles</h5>
+      <ul>
+        {% for b in bundles %}
+          <li>{{ b.name }}</li>
+        {% else %}
+          <li class='text-muted'>No contract bundles yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class='col-md-6'>
+    <div class='cc-card'>
+      <h5>Task Presets</h5>
+      <ul>
+        {% for p in presets %}
+          <li>{{ p.name }} ({{ p.job_type or 'Any type' }})</li>
+        {% else %}
+          <li class='text-muted'>No task presets yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

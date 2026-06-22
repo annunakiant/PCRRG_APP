@@ -1,0 +1,12 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h2>New Job</h2>
+<form method="post">
+  <div class="mb-2"><label>Job Number</label><input name="job_number" class="form-control"></div>
+  <div class="mb-2"><label>Title</label><input name="title" class="form-control"></div>
+  <div class="mb-2"><label>Client Name</label><input name="client_name" class="form-control"></div>
+  <div class="mb-2"><label>Address</label><input name="address" class="form-control"></div>
+  <div class="mb-2"><label>Service Type</label><input name="service_type" class="form-control"></div>
+  <button class="btn btn-primary">Create</button>
+</form>
+{% endblock %}

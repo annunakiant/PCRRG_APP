@@ -1,0 +1,18 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h2>Task Templates</h2>
+<form method="post" class="mb-3">
+  <div class="mb-2"><label>Name</label><input name="name" class="form-control" required></div>
+  <div class="mb-2"><label>Description</label><input name="description" class="form-control"></div>
+  <div class="mb-2"><label>Service Type</label><input name="service_type" class="form-control"></div>
+  <button class="btn btn-primary btn-sm">Add Template</button>
+</form>
+<table class="table table-sm">
+  <thead><tr><th>Name</th><th>Service</th></tr></thead>
+  <tbody>
+    {% for t in templates %}
+    <tr><td>{{ t.name }}</td><td>{{ t.service_type }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

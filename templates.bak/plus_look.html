@@ -1,0 +1,39 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h2>PLUS — Look & Feel</h2>
+
+<form method='post' enctype='multipart/form-data' class='mb-3'>
+
+  <h4>Theme Colors</h4>
+  <label>Primary</label>
+  <input name='primary_color' class='form-control' value='{{ theme.primary_color }}'>
+  <label>Secondary</label>
+  <input name='secondary_color' class='form-control' value='{{ theme.secondary_color }}'>
+
+  <h4 class='mt-3'>Logo Upload</h4>
+  <input type='file' name='logo_file' class='form-control'>
+
+  <h4 class='mt-3'>Background Image</h4>
+  <input name='background_image_url' class='form-control' value='{{ plus_ui.background_image_url }}'>
+
+  <h4 class='mt-3'>Fonts</h4>
+  <input name='font_family' class='form-control' value='{{ plus_ui.font_family }}'>
+  <input name='font_size' class='form-control mt-1' value='{{ plus_ui.font_size }}'>
+
+  <h4 class='mt-3'>Layout Style</h4>
+  <select name='layout_style' class='form-select'>
+    <option value='default' {% if plus_ui.layout_style=='default' %}selected{% endif %}>Default</option>
+    <option value='compact' {% if plus_ui.layout_style=='compact' %}selected{% endif %}>Compact</option>
+    <option value='wide' {% if plus_ui.layout_style=='wide' %}selected{% endif %}>Wide</option>
+  </select>
+
+  <h4 class='mt-3'>Home Tabs Style</h4>
+  <select name='home_tabs_style' class='form-select'>
+    <option value='standard' {% if plus_ui.home_tabs_style=='standard' %}selected{% endif %}>Standard</option>
+    <option value='pill' {% if plus_ui.home_tabs_style=='pill' %}selected{% endif %}>Pill</option>
+    <option value='sidebar' {% if plus_ui.home_tabs_style=='sidebar' %}selected{% endif %}>Sidebar</option>
+  </select>
+
+  <button class='btn btn-primary mt-3'>Save</button>
+</form>
+{% endblock %}

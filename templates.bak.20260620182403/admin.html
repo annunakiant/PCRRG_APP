@@ -1,0 +1,34 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h2>Admin Control Center</h2>
+
+<section style="background:white;padding:12px;border-radius:8px;margin-bottom:12px;">
+  <h3>Theme / Branding</h3>
+  <form method="post" action="{{ url_for('admin_theme_update') }}">
+    <div class="row">
+      <label for="primary_color">Primary color</label>
+      <input id="primary_color" name="primary_color" type="color" value="{{ theme.primary_color or '#1E88E5' }}">
+    </div>
+    <div class="row">
+      <label for="secondary_color">Secondary color</label>
+      <input id="secondary_color" name="secondary_color" type="color" value="{{ theme.secondary_color or '#FFC107' }}">
+    </div>
+    <div class="row">
+      <label for="logo_url">Logo URL</label>
+      <input id="logo_url" name="logo_url" type="text" value="{{ theme.logo_url or '/static/logo.png' }}">
+    </div>
+    <button type="submit" class="btn">Save Theme</button>
+  </form>
+</section>
+
+<section style="background:white;padding:12px;border-radius:8px;">
+  <h3>Recent Jobs</h3>
+  <ul>
+    {% for j in jobs %}
+      <li><a href="{{ url_for('view_job', job_id=j.id) }}">{{ j.job_number }} - {{ j.title }}</a></li>
+    {% else %}
+      <li>No jobs yet</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

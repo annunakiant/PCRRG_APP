@@ -1,0 +1,19 @@
+﻿{% extends "base.html" %}
+{% block title %}Job Folder{% endblock %}
+{% block subtitle %}{{ job.job_number }} – {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-title">Checklists</div>
+  <a href="{{ url_for('job_checklist_add', job_id=job.id) }}" class="btn btn-primary" style="margin-bottom:0.5rem;">Add Checklist</a>
+  <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+    {% for c in job.checklists %}
+    <li style="margin-bottom:0.5rem;">
+      <strong>{{ c.name }}</strong> ({{ c.tasks|length }} tasks)
+      <a href="{{ url_for('job_checklist_view', checklist_id=c.id) }}" style="margin-left:0.5rem;">Open</a>
+      <a href="{{ url_for('job_checklist_edit', checklist_id=c.id) }}" style="margin-left:0.5rem;">Edit</a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

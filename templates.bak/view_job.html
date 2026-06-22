@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Job {{ job.job_number }} - {{ job.title }}</h2>
+<p>Client: {{ job.client_name }} | Address: {{ job.address }}</p>
+
+<h3>Packout Summary</h3>
+{% if job.packout_items.count() == 0 %}
+  <p>No packout items yet. <a href="{{ url_for('job_packouts', job_id=job.id) }}">Add packout items</a></p>
+{% else %}
+  <ul>
+    {% for item in job.packout_items.limit(5).all() %}
+      <li>{{ item.name }} x{{ item.quantity }} @ {{ item.location or 'N/A' }} {% if item.photos.count() > 0 %}- <small>{{ item.photos.count() }} photo(s)</small>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  <a href="{{ url_for('job_packouts', job_id=job.id) }}" class="btn">View all packout items</a>
+{% endif %}
+
+<h3>Room Photos</h3>
+<form method="post" action="{{ url_for('upload_photo', job_id=job.id) }}" enctype="multipart/form-data">
+  <div><label>Photo</label><input type="file" name="photo" accept="image/*" capture="environment"></div>
+  <div><label>Location label</label><input name="location_label"></div>
+  <div><label>Before/After</label>
+    <select name="before_after"><option value="">--</option><option value="before">Before</option><option value="after">After</option></select>
+  </div>
+  <button type="submit" class="btn">Upload Photo</button>
+</form>
+
+<ul>
+  {% for p in photos %}
+    <li>{{ p.location_label or 'Unknown' }} [{{ p.before_after or 'n/a' }}] - <img src="{{ url_for('uploaded_file', filename=p.filename.split('uploads/')[1]) }}" style="max-width:150px;"></li>
+  {% else %}
+    <li>No photos</li>
+  {% endfor %}
+</ul>
+
+<h3>Share Job</h3>
+<form method="post" action="{{ url_for('share_job', job_id=job.id) }}">
+  <div><label>Email</label><input name="email" type="email" required></div>
+  <button type="submit" class="btn">Send Report</button>
+</form>
+
+{% endblock %}

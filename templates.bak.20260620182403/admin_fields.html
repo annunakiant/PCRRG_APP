@@ -1,0 +1,40 @@
+﻿{% extends "base.html" %}
+{% block title %}Fields – {{ tab.name }}{% endblock %}
+{% block subtitle %}Custom fields inside this tab{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-title">Add Field</div>
+  <form method="post" style="font-size:0.85rem;">
+    <input name="label" placeholder="Field label (e.g. Moisture Reading)" required
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+    <select name="field_type"
+            style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+      <option value="text">Text</option>
+      <option value="number">Number</option>
+      <option value="select">Dropdown</option>
+      <option value="checkbox">Checkbox</option>
+    </select>
+    <input name="options" placeholder="Options (comma separated, only for dropdown)"
+           style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:0.4rem;">
+    <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">
+      <input type="checkbox" name="required"> Required
+    </label>
+    <button class="btn btn-primary" type="submit">Add Field</button>
+  </form>
+</div>
+<div class="card" style="margin-top:1.5rem;">
+  <div class="card-title">Existing Fields</div>
+  <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
+    {% for f in tab.fields %}
+    <li style="margin-bottom:0.5rem;">
+      <strong>{{ f.label }}</strong> ({{ f.field_type }})
+      {% if f.options %}<span style="color:#9ca3af;">[{{ f.options }}]</span>{% endif %}
+      {% if f.required %}<span style="color:#22c55e;">Required</span>{% endif %}
+      <form method="post" action="{{ url_for('admin_field_delete', field_id=f.id) }}" style="display:inline;">
+        <button class="btn btn-outline" style="padding:0.2rem 0.5rem;font-size:0.75rem;">Delete</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

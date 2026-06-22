@@ -1,0 +1,18 @@
+﻿{% extends "base.html" %}
+{% block title %}Edit Checklist{% endblock %}
+{% block subtitle %}{{ checklist.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-title">Edit Tasks</div>
+  <form method="post" style="font-size:0.85rem;">
+    {% for task in checklist.tasks %}
+    <div style="margin-bottom:0.5rem;">
+      <input name="task_{{ task.id }}" value="{{ task.label }}"
+             style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;">
+    </div>
+    {% endfor %}
+    <button class="btn btn-primary" type="submit">Save Changes</button>
+  </form>
+</div>
+{% endblock %}

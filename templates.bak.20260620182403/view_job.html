@@ -6,9 +6,22 @@
 <section style="background:white;padding:12px;border-radius:8px;margin-bottom:12px;">
   <h3>Room Photos (Before / After)</h3>
   <form method="post" action="{{ url_for('upload_photo', job_id=job.id) }}" enctype="multipart/form-data">
-    <div class="row"><label>Photo (camera or file)</label><input type="file" name="photo" accept="image/*" capture="environment" required></div>
-    <div class="row"><label>Location label (room)</label><input type="text" name="location_label" placeholder="Kitchen, Bedroom..."></div>
-    <div class="row"><label>Before / After</label><select name="before_after"><option value="">--</option><option value="before">Before</option><option value="after">After</option></select></div>
+    <div class="row">
+      <label>Photo (camera or file)</label>
+      <input type="file" name="photo" accept="image/*" capture="environment" required>
+    </div>
+    <div class="row">
+      <label>Location label (room)</label>
+      <input type="text" name="location_label" placeholder="Kitchen, Bedroom, Living room...">
+    </div>
+    <div class="row">
+      <label>Before / After</label>
+      <select name="before_after">
+        <option value="">--</option>
+        <option value="before">Before</option>
+        <option value="after">After</option>
+      </select>
+    </div>
     <button type="submit" class="btn">Upload Photo</button>
   </form>
 
@@ -34,7 +47,13 @@
   {% if job.packout_items.count() == 0 %}
     <p>No packout items yet. <a href="{{ url_for('job_packouts', job_id=job.id) }}">Add packout items</a></p>
   {% else %}
-    <ul>{% for item in job.packout_items.limit(5).all() %}<li>{{ item.name }} x{{ item.quantity }} @ {{ item.location or 'N/A' }} {% if item.photos.count() > 0 %}- <small>{{ item.photos.count() }} photo(s)</small>{% endif %}</li>{% endfor %}</ul>
+    <ul>
+      {% for item in job.packout_items.limit(5).all() %}
+        <li>{{ item.name }} x{{ item.quantity }} @ {{ item.location or 'N/A' }}
+          {% if item.photos.count() > 0 %} - <small>{{ item.photos.count() }} photo(s)</small>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
     <a class="btn" href="{{ url_for('job_packouts', job_id=job.id) }}">View all packout items</a>
   {% endif %}
 </section>
@@ -46,4 +65,5 @@
     <button type="submit" class="btn">Send Report</button>
   </form>
 </section>
+
 {% endblock %}

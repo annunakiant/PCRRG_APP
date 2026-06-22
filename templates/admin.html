@@ -1,30 +1,17 @@
-﻿{% extends 'base.html' %}
+﻿{% extends "base.html" %}
 {% block content %}
 <h2>Admin Control Center</h2>
-
-<div class="mb-3">
-  <a href="{{ url_for('admin_users') }}" class="btn btn-sm btn-outline-primary">Manage Users</a>
-  <a href="{{ url_for('admin_task_templates') }}" class="btn btn-sm btn-outline-primary">Task Templates</a>
-  <a href="{{ url_for('manage_contracts') }}" class="btn btn-sm btn-outline-primary">Contracts</a>
-</div>
-
-<h4>Recent Jobs</h4>
-<table class="table table-sm">
-  <thead><tr><th>#</th><th>Title</th><th>Status</th><th></th></tr></thead>
-  <tbody>
-    {% for j in jobs %}
-    <tr>
-      <td>{{ j.job_number }}</td>
-      <td>{{ j.title }}</td>
-      <td>{{ j.status }}</td>
-      <td>
-        <a href="{{ url_for('view_job', job_id=j.id) }}" class="btn btn-sm btn-outline-primary">Open</a>
-        <form method="post" action="{{ url_for('delete_job', job_id=j.id) }}" style="display:inline;">
-          <button class="btn btn-sm btn-danger" onclick="return confirm('Delete job?');">Delete</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<section style="background:white;padding:12px;border-radius:8px;margin-bottom:12px;">
+  <h3>Theme / Branding</h3>
+  <form method="post" action="{{ url_for('admin_theme_update') }}">
+    <div class="row"><label>Primary color</label><input type="color" name="primary_color" value="{{ theme.primary_color or '#1E88E5' }}"></div>
+    <div class="row"><label>Secondary color</label><input type="color" name="secondary_color" value="{{ theme.secondary_color or '#FFC107' }}"></div>
+    <div class="row"><label>Logo URL</label><input type="text" name="logo_url" value="{{ theme.logo_url or '/static/logo.png' }}"></div>
+    <button type="submit" class="btn">Save Theme</button>
+  </form>
+</section>
+<section style="background:white;padding:12px;border-radius:8px;">
+  <h3>Recent Jobs</h3>
+  <ul>{% for j in jobs %}<li><a href="{{ url_for('view_job', job_id=j.id) }}">{{ j.job_number }} - {{ j.title }}</a></li>{% else %}<li>No jobs yet</li>{% endfor %}</ul>
+</section>
 {% endblock %}

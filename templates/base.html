@@ -1,155 +1,29 @@
-﻿<!doctype html>
-<html lang='en'>
+﻿<html lang='en'>
 <head>
   <meta charset='utf-8'>
   <title>PCRRG FieldOps</title>
   <meta name='viewport' content='width=device-width, initial-scale=1'>
 
-  <!-- Fonts -->
   <link href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' rel='stylesheet'>
-
-  <!-- Bootstrap -->
   <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
 
   <style>
-    /* COLOR SYSTEM — Dark + Teal (Soft Glow) */
     :root {
-      --primary: #2ec4b6;        /* Soft teal */
-      --primary-soft: #3fd4c6;   /* Hover */
-      --primary-glow: rgba(46,196,182,0.35); /* Soft glow */
-      --bg: #0e0f10;             /* Matte dark */
-      --bg2: #141517;            /* Card dark */
-      --border: #1f2023;         /* Subtle border */
-      --text: #e6e6e6;           /* Light text */
-      --text-soft: #aeb4b8;      /* Soft text */
+      --primary: {{ theme.primary_color or '#2ec4b6' }};
+      --secondary: {{ theme.secondary_color or '#FFC107' }};
+      --primary-glow: rgba(46,196,182,0.35);
+      --bg: #0e0f10;
+      --bg2: #141517;
+      --border: #1f2023;
+      --text: #e6e6e6;
+      --text-soft: #aeb4b8;
     }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: Inter, system-ui;
-      font-size: 15px;
-    }
-
-    /* TOP BAR */
-    .topbar {
-      background: #0b0c0d;
-      padding: 0.75rem 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .topbar-logo {
-      display: flex;
-      align-items: center;
-      font-weight: 600;
-      font-size: 1.25rem;
-      color: var(--text);
-    }
-
-    .topbar-logo img {
-      height: 36px;
-      margin-right: 10px;
-      border-radius: 6px;
-    }
-
-    /* NAVIGATION */
-    .app-nav {
-      background: #111214;
-      border-bottom: 1px solid var(--border);
-      padding: 0.5rem 1rem;
-      display: flex;
-      gap: 1rem;
-      font-weight: 500;
-    }
-
-    .app-nav a {
-      color: var(--text-soft);
-      text-decoration: none;
-      padding: 0.45rem 0.85rem;
-      border-radius: 8px;
-      transition: 0.2s;
-    }
-
-    .app-nav a:hover {
-      background: #1a1b1d;
-      color: var(--text);
-    }
-
-    .app-nav a.active {
-      background: rgba(46,196,182,0.15);
-      color: var(--primary) !important;
-      border: 1px solid rgba(46,196,182,0.35);
-      box-shadow: 0 0 8px var(--primary-glow);
-    }
-
-    /* CARDS */
-    .cc-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem;
-      margin-bottom: 1rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-    }
-
-    /* BUTTONS — Soft Glow Teal */
-    .btn-primary {
-      background-color: var(--primary) !important;
-      border-color: var(--primary) !important;
-      font-weight: 500;
-      border-radius: 8px;
-      box-shadow: 0 0 8px var(--primary-glow);
-      transition: 0.2s;
-    }
-
-    .btn-primary:hover {
-      background-color: var(--primary-soft) !important;
-      border-color: var(--primary-soft) !important;
-      box-shadow: 0 0 12px var(--primary-glow);
-    }
-
-    .btn-outline-primary {
-      border-color: var(--primary) !important;
-      color: var(--primary) !important;
-      border-radius: 8px;
-    }
-
-    .btn-outline-primary:hover {
-      background: var(--primary) !important;
-      color: #fff !important;
-    }
-
-    /* INPUTS */
-    .form-control, .form-select {
-      background: #1a1b1d;
-      border: 1px solid #2a2b2e;
-      color: var(--text);
-      border-radius: 8px;
-    }
-
-    .form-control:focus, .form-select:focus {
-      background: #1a1b1d;
-      border-color: var(--primary);
-      color: #fff;
-      box-shadow: 0 0 8px var(--primary-glow);
-    }
-
-    /* TABLES */
-    table {
-      color: var(--text);
-    }
-
-    table thead {
-      background: #0d0e10;
-    }
-
-    table tbody tr {
-      background: var(--bg2);
-      border-bottom: 1px solid var(--border);
-    }
+    body { background: var(--bg); color: var(--text); font-family: Inter, system-ui; }
+    .topbar { background:#0b0c0d; padding:0.75rem 1rem; display:flex; justify-content:space-between; border-bottom:1px solid var(--border); }
+    .topbar-logo img { height:36px; margin-right:10px; border-radius:6px; }
+    .app-nav { background:#111214; padding:0.5rem 1rem; display:flex; gap:1rem; }
+    .app-nav a { color:var(--text-soft); text-decoration:none; padding:0.45rem 0.85rem; border-radius:8px; }
+    .app-nav a.active { background:rgba(46,196,182,0.15); color:var(--primary) !important; border:1px solid rgba(46,196,182,0.35); }
   </style>
 </head>
 
@@ -157,24 +31,22 @@
 
 <div class='topbar'>
   <div class='topbar-logo'>
-    {% if theme.logo_url %}
-      <img src='{{ theme.logo_url }}'>
-    {% endif %}
+    <img src='{{ theme.logo_url }}'>
     PCRRG FieldOps
   </div>
   <div>
     {{ current_user.name or current_user.username }} |
-    <a href='{{ url_for('logout') }}' class='text-light'>Logout</a>
+    <a href='{{ url_for("logout") }}' class='text-light'>Logout</a>
   </div>
 </div>
 
 <div class='app-nav'>
-  <a href='{{ url_for('dashboard') }}' class='{% if request.endpoint=="dashboard" %}active{% endif %}'>Dashboard</a>
-  <a href='{{ url_for('inventory_list') }}' class='{% if "inventory" in request.endpoint %}active{% endif %}'>Inventory</a>
-  <a href='{{ url_for('new_job') }}' class='{% if request.endpoint=="new_job" %}active{% endif %}'>New Job</a>
-  <a href='{{ url_for('admin_home') }}' class='{% if "admin" in request.endpoint %}active{% endif %}'>Admin</a>
-  <a href='{{ url_for('admin_task_templates') }}' class='{% if "task" in request.endpoint %}active{% endif %}'>Tasks</a>
-  <a href='{{ url_for('manage_contracts') }}' class='{% if "contract" in request.endpoint %}active{% endif %}'>Contracts</a>
+  <a href='{{ url_for("dashboard") }}' class='{% if request.endpoint=="dashboard" %}active{% endif %}'>Dashboard</a>
+  <a href='{{ url_for("inventory_list") }}' class='{% if "inventory" in request.endpoint %}active{% endif %}'>Inventory</a>
+  <a href='{{ url_for("new_job") }}' class='{% if request.endpoint=="new_job" %}active{% endif %}'>New Job</a>
+  <a href='{{ url_for("admin_home") }}' class='{% if "admin" in request.endpoint %}active{% endif %}'>Admin</a>
+  <a href='{{ url_for("view_packout", job_id=1) }}'>Packouts</a>
+  <a href='{{ url_for("manage_contracts") }}' class='{% if "contract" in request.endpoint %}active{% endif %}'>Contracts</a>
 </div>
 
 <div class='container-fluid mt-3'>

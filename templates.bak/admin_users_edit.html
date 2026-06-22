@@ -1,0 +1,19 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h2>{{ 'New User' if not user else 'Edit User' }}</h2>
+<form method="post">
+  <div class="mb-2"><label>Username</label><input name="username" class="form-control" value="{{ user.username if user else '' }}"></div>
+  <div class="mb-2"><label>PIN</label><input name="pin" class="form-control" value="{{ user.pin if user else '' }}"></div>
+  <div class="mb-2"><label>Name</label><input name="name" class="form-control" value="{{ user.name if user else '' }}"></div>
+  <div class="mb-2"><label>Phone</label><input name="phone" class="form-control" value="{{ user.phone if user else '' }}"></div>
+  <div class="mb-2"><label>Email</label><input name="email" class="form-control" value="{{ user.email if user else '' }}"></div>
+  <div class="mb-2">
+    <label>Role</label>
+    <select name="role" class="form-select">
+      <option value="tech" {% if user and user.role=='tech' %}selected{% endif %}>Tech</option>
+      <option value="admin" {% if user and user.role=='admin' %}selected{% endif %}>Admin</option>
+    </select>
+  </div>
+  <button class="btn btn-primary">Save</button>
+</form>
+{% endblock %}

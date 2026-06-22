@@ -1,0 +1,39 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h2>Custom Tabs</h2>
+
+<form method="post" class="mb-3">
+  <div class="mb-2">
+    <label>Name</label>
+    <input type="text" name="name" class="form-control" required>
+  </div>
+  <div class="mb-2">
+    <label>Order</label>
+    <input type="number" name="order" class="form-control" value="0">
+  </div>
+  <button class="btn btn-primary btn-sm">Add Tab</button>
+</form>
+
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Order</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tabs %}
+    <tr>
+      <td>{{ t.name }}</td>
+      <td>{{ t.order }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin_tabs_delete', tab_id=t.id) }}" style="display:inline;">
+          <button class="btn btn-sm btn-danger" onclick="return confirm('Delete tab?');">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

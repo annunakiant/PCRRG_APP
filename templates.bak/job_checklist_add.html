@@ -1,0 +1,25 @@
+﻿{% extends "base.html" %}
+{% block title %}Add Checklist{% endblock %}
+{% block subtitle %}Attach a template or create custom tasks{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:520px;margin:0 auto;">
+  <div class="card-title">Add Checklist</div>
+  <form method="post" style="font-size:0.85rem;">
+    <label>Template</label>
+    <select name="template_id"
+            style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;margin-bottom:1rem;">
+      <option value="">None (custom checklist)</option>
+      {% for t in templates %}
+      <option value="{{ t.id }}">{{ t.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Custom Tasks (one per line)</label>
+    <textarea name="custom_tasks" rows="6"
+              style="width:100%;padding:0.4rem;border-radius:0.5rem;border:1px solid #374151;background:#020617;color:#e5e7eb;"></textarea>
+
+    <button class="btn btn-primary" type="submit" style="margin-top:1rem;">Create Checklist</button>
+  </form>
+</div>
+{% endblock %}
