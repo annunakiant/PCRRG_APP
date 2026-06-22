@@ -1,4 +1,4 @@
-# app.py - PCRRG SUPER-MEGA Field Operations Platform v2.4 FINAL COMPLETE
+# app.py - PCRRG SUPER-MEGA Field Operations Platform v2.5 FINAL COMPLETE
 import os
 import logging
 from datetime import datetime
@@ -327,8 +327,13 @@ def admin_home():
         active_sessions=active_sessions
     )
 
-# All other admin, task, photo, contract, inventory routes from your original code are included here. The critical enhanced Packout is below.
+@app.route('/inventory')
+@login_required
+def inventory_list():
+    items = InventoryItem.query.order_by(InventoryItem.name).all()
+    return render_template('inventory.html', items=items)
 
+# Enhanced Packout Route
 @app.route('/jobs/<int:job_id>/packout/add', methods=['POST'])
 @login_required
 def add_packout_item(job_id):
