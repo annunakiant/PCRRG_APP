@@ -239,7 +239,7 @@ def inject_globals():
     return {'is_admin': is_admin(), 'current_user': current_user, 'theme': theme}
 
 # -------------------------------------------------------------------------
-# ALL ROUTES
+# ALL ROUTES - FULL SET
 # -------------------------------------------------------------------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -387,8 +387,6 @@ def add_packout_item(job_id):
 @app.route('/static/uploads/<path:filename>')
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_ROOT, filename)
-
-# (All other routes from your original code are preserved in this full version - the app is now complete and will not have BuildError)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '5000')))
