@@ -1239,3 +1239,18 @@ app.register_blueprint(templates_bp)
 # -------------------------------------------------------------------------
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '5000')))
+
+# -------------------------------------------------------------------------
+# JOB REPORT PDF
+# -------------------------------------------------------------------------
+@app.route('/jobs/<int:job_id>/report.pdf')
+@login_required
+def job_report_pdf(job_id):
+    job = Job.query.get_or_404(job_id)
+    from job_report import generate_job_pdf
+    reports_dir = os.path.join(app.config['ARCHIVE_FOLDER'], 'reports')
+    os.makedirs(reports_dir, exist_ok=True)
+    filename = f"job_{job.id}_report.pdf"
+    path = os.path.join(reports_dir, filename)
+    generate_job_pdf(job, path)
+    return send_from_directory(reports_dir, filename, as_attachment=True)
