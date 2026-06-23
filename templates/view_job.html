@@ -147,6 +147,30 @@
   </ul>
 </section>
 
+
+<!-- CHECKLIST ATTACH -->
+<section class="cc-card">
+  <h3>Attach Checklist</h3>
+  <form method="post" action="{{ url_for('attach_checklist', job_id=job.id) }}" class="mb-2">
+    <div class="row g-2">
+      <div class="col-md-8">
+        <select class="form-select" name="template_id" required>
+          <option value="">Select checklist...</option>
+          {% for t in task_templates %}
+            {% if t.description %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <button class="btn btn-primary btn-sm w-100">Attach Checklist</button>
+      </div>
+    </div>
+  </form>
+</section>
+
+
 <!-- TASKS -->
 <section class="cc-card">
   <h3>Tasks</h3>

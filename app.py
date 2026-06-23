@@ -780,6 +780,33 @@ def delete_job(job_id):
 # -------------------------------------------------------------------------
 # JOB TASK TEMPLATES + TASKS
 # -------------------------------------------------------------------------
+
+@app.route('/admin/checklists', methods=['GET', 'POST'])
+@login_required
+def admin_checklists():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        steps_raw = request.form.get('steps') or ""
+        steps = [s.strip() for s in steps_raw.splitlines() if s.strip()]
+
+        tmpl = JobTaskTemplate(
+            name=name,
+            description=json.dumps(steps),
+            service_type=request.form.get('service_type')
+        )
+        db.session.add(tmpl)
+        db.session.commit()
+        flash('Checklist created.')
+        return redirect(url_for('admin_checklists'))
+
+    templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
+    return render_template('admin_checklists.html', templates=templates)
+
+
 @app.route('/admin/task-templates', methods=['GET', 'POST'])
 @login_required
 def admin_task_templates():
@@ -803,6 +830,32 @@ def admin_task_templates():
 
     templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
     return render_template('admin_task_templates.html', templates=templates)
+
+
+
+@app.route('/jobs/<int:job_id>/attach_checklist', methods=['POST'])
+@login_required
+def attach_checklist(job_id):
+    job = Job.query.get_or_404(job_id)
+    tmpl_id = int(request.form.get('template_id'))
+    tmpl = JobTaskTemplate.query.get_or_404(tmpl_id)
+
+    try:
+        steps = json.loads(tmpl.description or "[]")
+    except:
+        steps = []
+
+    for step in steps:
+        task = JobTask(
+            job_id=job.id,
+            template_id=tmpl.id,
+            label=step
+        )
+        db.session.add(task)
+
+    db.session.commit()
+    flash('Checklist attached.')
+    return redirect(url_for('view_job', job_id=job.id))
 
 
 @app.route('/jobs/<int:job_id>/tasks/add', methods=['POST'])
