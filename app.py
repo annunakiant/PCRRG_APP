@@ -708,6 +708,29 @@ def new_job():
         )
         db.session.add(job)
         db.session.commit()
+
+        # AUTO‑ATTACH TASKS BASED ON JOB TYPE
+        templates = JobTaskTemplate.query.filter_by(service_type=job.service_type).all()
+        for tmpl in templates:
+            task = JobTask(
+                job_id=job.id,
+                template_id=tmpl.id,
+                label=tmpl.name
+            )
+            db.session.add(task)
+        db.session.commit()
+
+        # AUTO‑ATTACH TASKS BASED ON JOB TYPE
+        templates = JobTaskTemplate.query.filter_by(service_type=job.service_type).all()
+        for tmpl in templates:
+            task = JobTask(
+                job_id=job.id,
+                template_id=tmpl.id,
+                label=tmpl.name
+            )
+            db.session.add(task)
+        db.session.commit()
+
         flash('Job created.')
         return redirect(url_for('view_job', job_id=job.id))
 
@@ -801,6 +824,18 @@ def add_job_task(job_id):
     db.session.add(task)
     db.session.commit()
     flash('Task added to job.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+
+@app.route('/jobs/<int:job_id>/tasks/<int:task_id>/delete', methods=['POST'])
+@login_required
+def delete_job_task(job_id, task_id):
+    job = Job.query.get_or_404(job_id)
+    task = JobTask.query.get_or_404(task_id)
+    db.session.delete(task)
+    db.session.commit()
+    flash('Task deleted.')
     return redirect(url_for('view_job', job_id=job.id))
 
 
