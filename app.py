@@ -209,6 +209,7 @@ class ContractTemplate(db.Model):
 
 
 class JobContract(db.Model):
+
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'))
@@ -1081,6 +1082,18 @@ def inventory_delete(item_id):
 # -------------------------------------------------------------------------
 # CONTRACTS + E-SIGN
 # -------------------------------------------------------------------------
+
+@app.route('/contracts/<int:contract_id>/view')
+@login_required
+def view_contract_doc(contract_id):
+    contract = JobContract.query.get_or_404(contract_id)
+    tmpl = contract.template
+    if not tmpl or not tmpl.filename:
+        flash('No contract file available.')
+        return redirect(url_for('view_job', job_id=contract.job_id))
+    return send_from_directory(CONTRACTS_FOLDER, tmpl.filename, as_attachment=False)
+
+
 @app.route('/contracts/templates', methods=['GET', 'POST'])
 @login_required
 def manage_contracts():

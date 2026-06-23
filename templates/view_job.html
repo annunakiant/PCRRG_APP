@@ -136,6 +136,12 @@
     {% for c in contracts %}
     <li class="mb-1">
       Template #{{ c.template_id }} — {{ 'Signed' if c.signed else 'Pending' }}
+
+      <a class="btn btn-sm btn-outline-primary"
+         href="{{ url_for('view_contract_doc', contract_id=c.id) }}">
+        View
+      </a>
+
       {% if not c.signed %}
       <a class="btn btn-sm btn-success"
          href="{{ url_for('sign_contract', job_id=job.id, contract_id=c.id) }}">
