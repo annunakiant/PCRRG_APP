@@ -1346,6 +1346,23 @@ if __name__ == '__main__':
 # -------------------------------------------------------------------------
 
 @app.route('/jobs/<int:job_id>/export/pdf')
+
+@app.route('/jobs/<int:job_id>/export/zip')
+@login_required
+def export_job_zip(job_id):
+    job = Job.query.get_or_404(job_id)
+    from export_zip import build_zip_package
+
+    export_dir = os.path.join(app.config['ARCHIVE_FOLDER'], 'exports')
+    os.makedirs(export_dir, exist_ok=True)
+
+    filename = f"job_{job.id}_package.zip"
+    path = os.path.join(export_dir, filename)
+
+    build_zip_package(job, path)
+
+    return send_from_directory(export_dir, filename, as_attachment=True)
+
 @login_required
 def export_job_pdf(job_id):
     job = Job.query.get_or_404(job_id)

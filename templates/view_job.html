@@ -233,7 +233,13 @@
   <h3>Export</h3>
   <a class="btn btn-primary btn-sm"
      href="{{ url_for('export_job_pdf', job_id=job.id) }}">
-     Download Full PDF Report
+     Download Full PDF Report</a>
+  
+  <a class="btn btn-secondary btn-sm"
+     href="{{ url_for('export_job_zip', job_id=job.id) }}">
+     Download Full ZIP Package
+  </a>
+
   </a>
 </section>
 
