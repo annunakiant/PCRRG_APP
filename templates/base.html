@@ -9,21 +9,34 @@
 
   <style>
     :root {
-      --primary: {{ theme.primary_color if theme and theme.primary_color else "#2ec4b6" }};
-      --primary-soft: #3fd4c6;
-      --primary-glow: rgba(46,196,182,0.35);
-      --bg: #0e0f10;
-      --bg2: #141517;
-      --border: #1f2023;
-      --text: #e6e6e6;
+      --primary: {{ (theme.primary if theme and theme.primary is defined else (theme.primary_color if theme and theme.primary_color is defined else "#2ec4b6")) }};
+      --accent: {{ (theme.accent if theme and theme.accent is defined else "#00E0FF") }};
+      --bg: {{ (theme.background if theme and theme.background is defined else "#0e0f10") }};
+      --bg2: {{ (theme.card if theme and theme.card is defined else "#141517") }};
+      --border: {{ (theme.card_border if theme and theme.card_border is defined else "#1f2023") }};
+      --text: {{ (theme.text_color if theme and theme.text_color is defined else "#e6e6e6") }};
       --text-soft: #aeb4b8;
+      --nav-bg: {{ (theme.nav_background if theme and theme.nav_background is defined else "#111214") }};
+      --nav-active-bg: {{ (theme.nav_active_background if theme and theme.nav_active_background is defined else "rgba(46,196,182,0.15)") }};
+      --nav-active-border: {{ (theme.nav_active_border if theme and theme.nav_active_border is defined else "rgba(46,196,182,0.35)") }};
+      --font-family: {{ (theme.font_family if theme and theme.font_family is defined else "Inter, system-ui") }};
+      --font-size: {{ (theme.font_size if theme and theme.font_size is defined else "15px") }};
+      --heading-size: {{ (theme.heading_size if theme and theme.heading_size is defined else "20px") }};
+      --card-radius: {{ (theme.card_radius if theme and theme.card_radius is defined else "12") }}px;
+      --button-radius: {{ (theme.button_radius if theme and theme.button_radius is defined else "8") }}px;
+      --spacing: {{ (theme.spacing_scale if theme and theme.spacing_scale is defined else "12") }}px;
     }
 
     body {
       background: var(--bg);
+      {% if theme and theme.background_image %}
+      background-image: url('{{ theme.background_image }}');
+      background-size: cover;
+      background-position: center;
+      {% endif %}
       color: var(--text);
-      font-family: Inter, system-ui;
-      font-size: 15px;
+      font-family: var(--font-family);
+      font-size: var(--font-size);
     }
 
     .topbar {
@@ -50,7 +63,7 @@
     }
 
     .app-nav {
-      background: #111214;
+      background: var(--nav-bg);
       border-bottom: 1px solid var(--border);
       padding: 0.5rem 1rem;
       display: flex;
@@ -63,8 +76,11 @@
       color: var(--text-soft);
       text-decoration: none;
       padding: 0.45rem 0.85rem;
-      border-radius: 8px;
+      border-radius: var(--button-radius);
       transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .app-nav a:hover {
@@ -73,40 +89,50 @@
     }
 
     .app-nav a.active {
-      background: rgba(46,196,182,0.15);
+      background: var(--nav-active-bg);
       color: var(--primary) !important;
-      border: 1px solid rgba(46,196,182,0.35);
-      box-shadow: 0 0 8px var(--primary-glow);
+      border: 1px solid var(--nav-active-border);
+      box-shadow: 0 0 8px rgba(46,196,182,0.35);
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
     }
 
     .cc-card {
       background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem;
+      border-radius: var(--card-radius);
+      padding: var(--spacing);
       margin-bottom: 1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+
+    h2, h3, h4, h5 {
+      font-size: var(--heading-size);
     }
 
     .btn-primary {
       background-color: var(--primary) !important;
       border-color: var(--primary) !important;
       font-weight: 500;
-      border-radius: 8px;
-      box-shadow: 0 0 8px var(--primary-glow);
+      border-radius: var(--button-radius);
+      box-shadow: 0 0 8px rgba(46,196,182,0.35);
       transition: 0.2s;
     }
 
     .btn-primary:hover {
-      background-color: var(--primary-soft) !important;
-      border-color: var(--primary-soft) !important;
-      box-shadow: 0 0 12px var(--primary-glow);
+      background-color: var(--accent) !important;
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 12px rgba(46,196,182,0.35);
     }
 
     .btn-outline-primary {
       border-color: var(--primary) !important;
       color: var(--primary) !important;
-      border-radius: 8px;
+      border-radius: var(--button-radius);
     }
 
     .btn-outline-primary:hover {
@@ -118,14 +144,14 @@
       background: #1a1b1d;
       border: 1px solid #2a2b2e;
       color: var(--text);
-      border-radius: 8px;
+      border-radius: var(--button-radius);
     }
 
     .form-control:focus, .form-select:focus {
       background: #1a1b1d;
       border-color: var(--primary);
       color: #fff;
-      box-shadow: 0 0 8px var(--primary-glow);
+      box-shadow: 0 0 8px rgba(46,196,182,0.35);
     }
 
     table {
@@ -143,6 +169,7 @@
   </style>
 </head>
 <body>
+
 <div class="topbar">
   <div class="topbar-logo">
     {% if theme and theme.logo_url %}
@@ -157,13 +184,26 @@
 </div>
 
 <div class="app-nav">
-  <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint=='dashboard' %}active{% endif %}">Dashboard</a>
-  <a href="{{ url_for('inventory_list') }}" class="{% if 'inventory' in request.endpoint %}active{% endif %}">Inventory</a>
-  <a href="{{ url_for('new_job') }}" class="{% if request.endpoint=='new_job' %}active{% endif %}">New Job</a>
+  <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint=='dashboard' %}active{% endif %}">
+    {% if theme and theme.tab_icon_dashboard %}<img class="nav-icon" src="{{ theme.tab_icon_dashboard }}">{% endif %}
+    Dashboard
+  </a>
+  <a href="{{ url_for('inventory_list') }}" class="{% if 'inventory' in request.endpoint %}active{% endif %}">
+    {% if theme and theme.tab_icon_inventory %}<img class="nav-icon" src="{{ theme.tab_icon_inventory }}">{% endif %}
+    Inventory
+  </a>
+  <a href="{{ url_for('new_job') }}" class="{% if request.endpoint=='new_job' %}active{% endif %}">
+    {% if theme and theme.tab_icon_jobs %}<img class="nav-icon" src="{{ theme.tab_icon_jobs }}">{% endif %}
+    New Job
+  </a>
   {% if is_admin %}
-    <a href="{{ url_for('admin_home') }}" class="{% if 'admin' in request.endpoint %}active{% endif %}">Admin</a>
+    <a href="{{ url_for('admin_home') }}" class="{% if 'admin' in request.endpoint %}active{% endif %}">
+      {% if theme and theme.tab_icon_admin %}<img class="nav-icon" src="{{ theme.tab_icon_admin }}">{% endif %}
+      Admin
+    </a>
     <a href="{{ url_for('admin_task_templates') }}" class="{% if 'task' in request.endpoint %}active{% endif %}">Tasks</a>
     <a href="{{ url_for('manage_contracts') }}" class="{% if 'contract' in request.endpoint %}active{% endif %}">Contracts</a>
+    <a href="{{ url_for('theme.theme_admin') }}" class="{% if 'theme' in request.endpoint %}active{% endif %}">Theme Engine</a>
   {% endif %}
 </div>
 

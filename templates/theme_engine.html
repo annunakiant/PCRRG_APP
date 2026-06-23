@@ -1,57 +1,106 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block content %}
-<h2>Theme Engine 2.0 — CompanyCam Dark</h2>
+<h2>Theme Engine 2.0  CompanyCam Dark</h2>
 
-<form method='post' enctype='multipart/form-data' class='cc-card'>
+<form method="post" enctype="multipart/form-data" class="cc-card">
 
   <h4>Mode</h4>
-  <select name='mode' class='form-select mb-3'>
-    <option value='dark' {% if theme.mode=='dark' %}selected{% endif %}>Dark</option>
-    <option value='light' {% if theme.mode=='light' %}selected{% endif %}>Light</option>
+  <select name="mode" class="form-select mb-3">
+    <option value="dark" {% if theme.mode=='dark' %}selected{% endif %}>Dark</option>
+    <option value="light" {% if theme.mode=='light' %}selected{% endif %}>Light</option>
   </select>
 
   <h4>Primary Color</h4>
-  <input name='primary' class='form-control mb-3' value='{{ theme.primary }}'>
+  <input type="color" name="primary" class="form-control mb-3" value="{{ theme.primary }}">
 
   <h4>Accent Color</h4>
-  <input name='accent' class='form-control mb-3' value='{{ theme.accent }}'>
+  <input type="color" name="accent" class="form-control mb-3" value="{{ theme.accent }}">
 
   <h4>Background Color</h4>
-  <input name='background' class='form-control mb-3' value='{{ theme.background }}'>
+  <input type="color" name="background" class="form-control mb-3" value="{{ theme.background }}">
+
+  <h4>Text Color</h4>
+  <input type="color" name="text_color" class="form-control mb-3" value="{{ theme.text_color }}">
+
+  <h4>Nav Background</h4>
+  <input type="color" name="nav_background" class="form-control mb-3" value="{{ theme.nav_background }}">
+
+  <h4>Nav Active Background</h4>
+  <input type="color" name="nav_active_background" class="form-control mb-3" value="{{ theme.nav_active_background }}">
+
+  <h4>Nav Active Border</h4>
+  <input type="color" name="nav_active_border" class="form-control mb-3" value="{{ theme.nav_active_border }}">
 
   <h4>Background Image</h4>
-  <input type='file' name='background_image_file' class='form-control mb-3'>
-  <input name='background_image' class='form-control mb-3' value='{{ theme.background_image }}'>
+  <input type="file" name="background_image_file" class="form-control mb-3">
+  <input name="background_image" class="form-control mb-3" value="{{ theme.background_image }}">
 
   <h4>Card Style</h4>
-  <input name='card' class='form-control mb-3' value='{{ theme.card }}'>
-  <input name='card_border' class='form-control mb-3' value='{{ theme.card_border }}'>
+  <input name="card" class="form-control mb-3" value="{{ theme.card }}">
+  <input name="card_border" class="form-control mb-3" value="{{ theme.card_border }}">
+
+  <h4>Card Radius</h4>
+  <input type="range" name="card_radius" class="form-range mb-3" min="0" max="30" value="{{ theme.card_radius }}">
+  <div class="mb-3">Current: {{ theme.card_radius }}px</div>
+
+  <h4>Button Radius</h4>
+  <input type="range" name="button_radius" class="form-range mb-3" min="0" max="30" value="{{ theme.button_radius }}">
+  <div class="mb-3">Current: {{ theme.button_radius }}px</div>
+
+  <h4>Spacing Scale</h4>
+  <input type="range" name="spacing_scale" class="form-range mb-3" min="4" max="24" value="{{ theme.spacing_scale }}">
+  <div class="mb-3">Current: {{ theme.spacing_scale }}px</div>
 
   <h4>Font Family</h4>
-  <input name='font_family' class='form-control mb-3' value='{{ theme.font_family }}'>
+  <input name="font_family" class="form-control mb-3" value="{{ theme.font_family }}">
 
   <h4>Font Size</h4>
-  <input name='font_size' class='form-control mb-3' value='{{ theme.font_size }}'>
+  <input name="font_size" class="form-control mb-3" value="{{ theme.font_size }}">
+
+  <h4>Heading Size</h4>
+  <input name="heading_size" class="form-control mb-3" value="{{ theme.heading_size }}">
 
   <h4>Layout</h4>
-  <select name='layout' class='form-select mb-3'>
-    <option value='compact' {% if theme.layout=='compact' %}selected{% endif %}>Compact</option>
-    <option value='wide' {% if theme.layout=='wide' %}selected{% endif %}>Wide</option>
+  <select name="layout" class="form-select mb-3">
+    <option value="compact" {% if theme.layout=='compact' %}selected{% endif %}>Compact</option>
+    <option value="wide" {% if theme.layout=='wide' %}selected{% endif %}>Wide</option>
   </select>
 
   <h4>Tabs</h4>
-  <select name='tabs' class='form-select mb-3'>
-    <option value='pill' {% if theme.tabs=='pill' %}selected{% endif %}>Pill</option>
-    <option value='underline' {% if theme.tabs=='underline' %}selected{% endif %}>Underline</option>
-    <option value='sidebar' {% if theme.tabs=='sidebar' %}selected{% endif %}>Sidebar</option>
+  <select name="tabs" class="form-select mb-3">
+    <option value="pill" {% if theme.tabs=='pill' %}selected{% endif %}>Pill</option>
+    <option value="underline" {% if theme.tabs=='underline' %}selected{% endif %}>Underline</option>
+    <option value="sidebar" {% if theme.tabs=='sidebar' %}selected{% endif %}>Sidebar</option>
   </select>
 
   <h4>Buttons</h4>
-  <select name='buttons' class='form-select mb-3'>
-    <option value='rounded' {% if theme.buttons=='rounded' %}selected{% endif %}>Rounded</option>
-    <option value='square' {% if theme.buttons=='square' %}selected{% endif %}>Square</option>
+  <select name="buttons" class="form-select mb-3">
+    <option value="rounded" {% if theme.buttons=='rounded' %}selected{% endif %}>Rounded</option>
+    <option value="square" {% if theme.buttons=='square' %}selected{% endif %}>Square</option>
   </select>
 
-  <button class='btn btn-primary mt-3'>Save Theme</button>
+  <h4>Tab Icons (optional)</h4>
+  <div class="mb-2">
+    <label>Dashboard Icon</label>
+    <input type="file" name="tab_icon_dashboard_file" class="form-control mb-1">
+    <input name="tab_icon_dashboard" class="form-control mb-3" value="{{ theme.tab_icon_dashboard }}">
+  </div>
+  <div class="mb-2">
+    <label>Inventory Icon</label>
+    <input type="file" name="tab_icon_inventory_file" class="form-control mb-1">
+    <input name="tab_icon_inventory" class="form-control mb-3" value="{{ theme.tab_icon_inventory }}">
+  </div>
+  <div class="mb-2">
+    <label>Jobs Icon</label>
+    <input type="file" name="tab_icon_jobs_file" class="form-control mb-1">
+    <input name="tab_icon_jobs" class="form-control mb-3" value="{{ theme.tab_icon_jobs }}">
+  </div>
+  <div class="mb-2">
+    <label>Admin Icon</label>
+    <input type="file" name="tab_icon_admin_file" class="form-control mb-1">
+    <input name="tab_icon_admin" class="form-control mb-3" value="{{ theme.tab_icon_admin }}">
+  </div>
+
+  <button class="btn btn-primary mt-3">Save Theme</button>
 </form>
 {% endblock %}
