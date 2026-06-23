@@ -1345,8 +1345,6 @@ if __name__ == '__main__':
 # JOB REPORT PDF
 # -------------------------------------------------------------------------
 
-@app.route('/jobs/<int:job_id>/export/pdf')
-
 @app.route('/jobs/<int:job_id>/export/zip')
 @login_required
 def export_job_zip(job_id):
@@ -1363,6 +1361,7 @@ def export_job_zip(job_id):
 
     return send_from_directory(export_dir, filename, as_attachment=True)
 
+@app.route('/jobs/<int:job_id>/export/pdf')
 @login_required
 def export_job_pdf(job_id):
     job = Job.query.get_or_404(job_id)
