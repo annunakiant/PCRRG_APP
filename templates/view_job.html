@@ -23,7 +23,7 @@
   <form method="post" action="{{ url_for('upload_photo', job_id=job.id) }}" enctype="multipart/form-data">
     <div class="mb-2">
       <label>Photo</label>
-      <input class="form-control" type="file" name="photo" accept="image/*" capture="environment" required>
+      <input class="form-control" type="file" name="photo" accept="image/*" capture="environment" multiple required>
     </div>
     <div class="mb-2">
       <label>Location</label>
