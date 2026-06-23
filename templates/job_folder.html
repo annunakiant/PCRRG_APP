@@ -5,6 +5,12 @@
 {% block content %}
 <div class="card">
   <div class="card-title">Checklists</div>
+{% if is_admin %}
+  <a class="btn btn-sm btn-primary mt-1" href="{{ url_for('import_checklist') }}">
+    Import Checklist
+  </a>
+{% endif %}
+
   <a href="{{ url_for('job_checklist_add', job_id=job.id) }}" class="btn btn-primary" style="margin-bottom:0.5rem;">Add Checklist</a>
   <ul style="list-style:none;padding:0;margin:0;font-size:0.85rem;">
     {% for c in job.checklists %}
