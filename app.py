@@ -288,6 +288,19 @@ def inject_globals():
     return {'is_admin': is_admin(), 'current_user': current_user, 'theme': theme}
 
 # -------------------------------------------------------------------------
+
+from urllib.parse import urlparse, urljoin
+
+def safe_redirect_target(target):
+    """Prevents Android/PWA redirect loops by validating next= URLs."""
+    if not target:
+        return None
+    host_url = urlparse(request.host_url)
+    redirect_url = urlparse(urljoin(request.host_url, target))
+    if redirect_url.scheme in ("http", "https") and host_url.netloc == redirect_url.netloc:
+        return redirect_url.path
+    return None
+
 # AUTH + DASHBOARD
 # -------------------------------------------------------------------------
 @app.route('/login', methods=['GET', 'POST'])
@@ -299,7 +312,11 @@ def login():
         if user:
             login_user(user)
             flash('Logged in.')
-            next_url = request.args.get('next') or url_for('dashboard')
+            next_url = request.args.get('next')
+            next_url = safe_redirect_target(next_url)
+            protected = ('/jobs', '/admin', '/packout', '/contracts')
+            if not next_url or next_url.startswith(protected):
+                next_url = url_for('dashboard')
             return redirect(next_url)
         else:
             flash('Invalid credentials.')
