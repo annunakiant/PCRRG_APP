@@ -182,16 +182,12 @@
   <h3>Tasks
 
 <div class="mb-3">
-  <label><strong>Choose Job Type Checklist</strong></label>
-  <form method="post" action="{{ url_for('attach_checklist', job_id=job.id) }}" class="d-flex gap-2">
-    <select name="template_id" class="form-select form-select-sm" required>
-      <option value="">Select checklist template...</option>
-      {% for t in task_templates %}
-        <option value="{{ t.id }}">{{ t.name }} ({{ t.service_type or 'General' }})</option>
-      {% endfor %}
-    </select>
-    <button class="btn btn-sm btn-primary">Attach Checklist</button>
-  </form>
+  <label><strong>
+</div>
+
+
+<div class="mb-3">
+  <label><strong>
 </div>
 
 

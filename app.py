@@ -392,8 +392,7 @@ def admin_home():
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).limit(10).all()
     tabs = CustomTab.query.order_by(CustomTab.order).all()
     theme = ThemeSettings.query.first()
-    task_templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
-    active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
+        active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
 
     return render_template(
         'admin.html',
@@ -639,7 +638,7 @@ def view_job(job_id):
     tabs = CustomTab.query.order_by(CustomTab.order).all()
     tasks = job.tasks.order_by(JobTask.id).all()
     task_templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name.asc()).all()
-
+    
     values_map = {v.field_id: v.value for v in job.custom_values}
 
     return render_template(
