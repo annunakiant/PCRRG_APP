@@ -381,6 +381,7 @@ def employee_clock_out():
 # -------------------------------------------------------------------------
 # ADMIN HOME + THEME + USERS + TABS
 # -------------------------------------------------------------------------
+
 @app.route('/admin')
 @login_required
 def admin_home():
@@ -392,7 +393,8 @@ def admin_home():
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).limit(10).all()
     tabs = CustomTab.query.order_by(CustomTab.order).all()
     theme = ThemeSettings.query.first()
-        active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
+    task_templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
+    active_sessions = EmployeeSession.query.filter(EmployeeSession.clock_out_at.is_(None)).all()
 
     return render_template(
         'admin.html',
@@ -403,6 +405,7 @@ def admin_home():
         task_templates=task_templates,
         active_sessions=active_sessions
     )
+
 
 
 @app.route('/admin/theme', methods=['POST'])
