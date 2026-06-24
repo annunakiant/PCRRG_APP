@@ -1,0 +1,24 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h2>Checklist Templates</h2>
+
+<a class="btn btn-sm btn-primary mb-3" href="{{ url_for('admin_checklist_new') }}">Create Checklist Template</a>
+<a class="btn btn-sm btn-outline-primary mb-3" href="{{ url_for('import_checklist') }}">Import Checklist File</a>
+
+<table class="table table-sm">
+  <thead><tr><th>Name</th><th>Service Type</th><th>Steps</th><th>Actions</th></tr></thead>
+  <tbody>
+    {% for t in templates %}
+    <tr>
+      <td>{{ t.name }}</td>
+      <td>{{ t.service_type or 'General' }}</td>
+      <td>{{ (t.description | safe | length) if t.description else 0 }}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin_checklist_edit', checklist_id=t.id) }}">Edit</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

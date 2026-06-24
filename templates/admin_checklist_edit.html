@@ -1,0 +1,65 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h2>Edit Checklist Template</h2>
+
+<form method="post">
+  <div class="mb-2">
+    <label>Name</label>
+    <input name="name" class="form-control" value="{{ tmpl.name }}" required>
+  </div>
+
+  <div class="mb-2">
+    <label>Service Type</label>
+    <input name="service_type" class="form-control" value="{{ tmpl.service_type }}">
+  </div>
+
+  <div class="mb-2">
+    <label>Steps</label>
+    <ul id="steps-list" class="list-group">
+      {% for s in steps %}
+      <li class="list-group-item d-flex align-items-center" draggable="true">
+        <span class="me-2" style="cursor:grab;">⋮⋮</span>
+        <input name="steps[]" class="form-control" value="{{ s }}">
+      </li>
+      {% endfor %}
+    </ul>
+    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-step-btn">Add Step</button>
+  </div>
+
+  <button class="btn btn-primary btn-sm mt-3">Save Checklist</button>
+</form>
+
+<script>
+document.getElementById('add-step-btn').addEventListener('click', function() {
+  const list = document.getElementById('steps-list');
+  const li = document.createElement('li');
+  li.className = 'list-group-item d-flex align-items-center';
+  li.setAttribute('draggable', 'true');
+  li.innerHTML = '<span class="me-2" style="cursor:grab;">⋮⋮</span><input name="steps[]" class="form-control" placeholder="New step">';
+  list.appendChild(li);
+});
+
+let dragged;
+document.addEventListener('dragstart', function(e) {
+  dragged = e.target.closest('li');
+});
+document.addEventListener('dragover', function(e) {
+  e.preventDefault();
+});
+document.addEventListener('drop', function(e) {
+  const target = e.target.closest('li');
+  if (dragged && target && dragged !== target) {
+    const list = document.getElementById('steps-list');
+    const items = Array.from(list.children);
+    const draggedIndex = items.indexOf(dragged);
+    const targetIndex = items.indexOf(target);
+    if (draggedIndex < targetIndex) {
+      list.insertBefore(dragged, target.nextSibling);
+    } else {
+      list.insertBefore(dragged, target);
+    }
+  }
+});
+</script>
+{% endblock %}
