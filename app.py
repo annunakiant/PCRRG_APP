@@ -782,6 +782,77 @@ def delete_job(job_id):
 # JOB TASK TEMPLATES + TASKS
 # -------------------------------------------------------------------------
 
+
+@app.route('/admin/checklists/import', methods=['GET', 'POST'])
+@login_required
+def import_checklist():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        file = request.files.get('file')
+        name = request.form.get('name') or 'Imported Checklist'
+        service_type = request.form.get('service_type')
+
+        if not file or file.filename == '':
+            flash('No file selected.')
+            return redirect(url_for('import_checklist'))
+
+        # Save uploaded file
+        import_dir = os.path.join(app.config['ARCHIVE_FOLDER'], 'imported_docs')
+        os.makedirs(import_dir, exist_ok=True)
+
+        filename = secure_filename(file.filename)
+        abs_path = os.path.join(import_dir, filename)
+        file.save(abs_path)
+
+        # Extract steps
+        steps = []
+        ext = filename.lower().split('.')[-1]
+
+        if ext == 'txt':
+            with open(abs_path, 'r', encoding='utf-8', errors='ignore') as ftxt:
+                steps = [line.strip() for line in ftxt if line.strip()]
+
+        elif ext == 'docx':
+            try:
+                from docx import Document
+                doc = Document(abs_path)
+                for p in doc.paragraphs:
+                    if p.text.strip():
+                        steps.append(p.text.strip())
+            except:
+                steps = []
+
+        elif ext == 'pdf':
+            try:
+                import PyPDF2
+                with open(abs_path, 'rb') as fpdf:
+                    reader = PyPDF2.PdfReader(fpdf)
+                    for page in reader.pages:
+                        text = page.extract_text() or ""
+                        for line in text.splitlines():
+                            if line.strip():
+                                steps.append(line.strip())
+            except:
+                steps = []
+
+        # Create template
+        tmpl = JobTaskTemplate(
+            name=name,
+            description=json.dumps(steps),
+            service_type=service_type
+        )
+        db.session.add(tmpl)
+        db.session.commit()
+
+        flash('Checklist imported successfully.')
+        return redirect(url_for('admin_checklists'))
+
+    return render_template('admin_checklist_import.html')
+
+
 @app.route('/admin/checklists', methods=['GET', 'POST'])
 @login_required
 def admin_checklists():
@@ -1389,3 +1460,32 @@ def job_report_pdf(job_id):
     path = os.path.join(reports_dir, filename)
     generate_job_pdf(job, path)
     return send_from_directory(reports_dir, filename, as_attachment=True)
+
+
+@app.route('/jobs/<int:job_id>/attach-checklist', methods=['POST'])
+@login_required
+def attach_checklist_to_job(job_id):
+    job = Job.query.get_or_404(job_id)
+    checklist_id = request.form.get('checklist_id')
+    tmpl = JobTaskTemplate.query.get_or_404(checklist_id)
+
+    import json
+    steps = []
+    try:
+        steps = json.loads(tmpl.description or "[]")
+    except:
+        steps = []
+
+    for s in steps:
+        if not s.strip():
+            continue
+        task = JobTask(
+            job_id=job.id,
+            description=s.strip(),
+            completed=False
+        )
+        db.session.add(task)
+
+    db.session.commit()
+    flash('Checklist attached to job.')
+    return redirect(url_for('view_job', job_id=job.id))
