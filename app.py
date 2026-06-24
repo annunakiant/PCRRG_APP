@@ -1559,3 +1559,16 @@ def admin_checklist_edit(checklist_id):
         return redirect(url_for('admin_checklists'))
 
     return render_template('admin_checklist_edit.html', tmpl=tmpl, steps=steps)
+
+
+# ---------------------------------------------------------
+# FIX: Missing delete_photo route (causing BuildError)
+# ---------------------------------------------------------
+@app.route('/jobs/<int:job_id>/photo/<int:photo_id>/delete', methods=['POST'])
+@login_required
+def delete_photo(job_id, photo_id):
+    photo = JobPhoto.query.get_or_404(photo_id)
+    db.session.delete(photo)
+    db.session.commit()
+    flash('Photo deleted.')
+    return redirect(url_for('view_job', job_id=job_id))
