@@ -638,6 +638,7 @@ def view_job(job_id):
     templates = ContractTemplate.query.all()
     tabs = CustomTab.query.order_by(CustomTab.order).all()
     tasks = job.tasks.order_by(JobTask.id).all()
+    task_templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name.asc()).all()
 
     values_map = {v.field_id: v.value for v in job.custom_values}
 
