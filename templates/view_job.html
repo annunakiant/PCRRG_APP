@@ -276,4 +276,173 @@
   </form>
 </section>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // --- UTILITY: GPS TRACKING ---
+    let currentGps = { lat: null, lon: null };
+    if(navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            currentGps.lat = pos.coords.latitude;
+            currentGps.lon = pos.coords.longitude;
+        });
+    }
+
+    // ==========================================
+    // ENGINE 1: MAIN ROOM PHOTOS
+    // ==========================================
+    const roomContainer = document.getElementById('camera-capture');
+    if(roomContainer) {
+        const uploadUrl = roomContainer.getAttribute('data-upload-url');
+        const username = roomContainer.getAttribute('data-username') || 'Tech';
+        
+        // Build UI inside the blank space
+        roomContainer.innerHTML = `
+            <div class="d-flex gap-2 mb-2">
+                <select id="room-category" class="form-select">
+                    <option value="Before">Before</option>
+                    <option value="During">During</option>
+                    <option value="After">After</option>
+                    <option value="Damage">Damage</option>
+                </select>
+            </div>
+            <button id="room-cam-start" class="btn btn-outline-primary w-100">Open Room Camera</button>
+            <video id="room-video" style="display:none; width:100%; max-height:400px; border-radius:8px; margin-top:10px; background:#000;" playsinline></video>
+            <canvas id="room-canvas" style="display:none;"></canvas>
+            <button id="room-cam-snap" class="btn btn-primary w-100 mt-2" style="display:none;">Snap Photo</button>
+            <div id="room-gallery" class="mt-2" style="display:flex; gap:10px; overflow-x:auto;"></div>
+            <button id="room-upload-btn" class="btn btn-success w-100 mt-2" style="display:none;">Upload Batch</button>
+        `;
+
+        const video = document.getElementById('room-video');
+        const startBtn = document.getElementById('room-cam-start');
+        const snapBtn = document.getElementById('room-cam-snap');
+        const uploadBtn = document.getElementById('room-upload-btn');
+        const canvas = document.getElementById('room-canvas');
+        let roomStream = null;
+        let roomBatch = [];
+
+        startBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if(roomStream) {
+                roomStream.getTracks().forEach(t => t.stop()); roomStream = null;
+                video.style.display = 'none'; snapBtn.style.display = 'none';
+                startBtn.textContent = 'Open Room Camera';
+                return;
+            }
+            try {
+                roomStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = roomStream; video.style.display = 'block';
+                await video.play();
+                startBtn.textContent = 'Close Camera'; snapBtn.style.display = 'block';
+            } catch(err) { alert('Camera access failed.'); }
+        });
+
+        snapBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Text Stamping
+            const cat = document.getElementById('room-category').value;
+            const ts = new Date().toLocaleString();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+            ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
+            ctx.font = "20px Arial"; ctx.fillStyle = "white";
+            ctx.fillText(`Tech: ${username} | ${ts}`, 20, canvas.height - 45);
+            ctx.fillText(`Cat: ${cat}`, 20, canvas.height - 15);
+
+            canvas.toBlob(blob => {
+                const file = new File([blob], `room_${Date.now()}.jpg`, { type: "image/jpeg" });
+                roomBatch.push({ file: file, category: cat, lat: currentGps.lat, lon: currentGps.lon });
+                
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(blob);
+                img.style.height = '80px'; img.style.borderRadius = '6px';
+                document.getElementById('room-gallery').appendChild(img);
+                
+                uploadBtn.style.display = 'block';
+                uploadBtn.textContent = `Upload Batch (${roomBatch.length})`;
+            }, 'image/jpeg', 0.85);
+        });
+
+        uploadBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            uploadBtn.disabled = true; uploadBtn.textContent = 'Uploading...';
+            for(let item of roomBatch) {
+                let fd = new FormData();
+                fd.append('photo', item.file);
+                fd.append('category', item.category);
+                if(item.lat) fd.append('lat', item.lat);
+                if(item.lon) fd.append('lon', item.lon);
+                await fetch(uploadUrl, { method: 'POST', body: fd });
+            }
+            window.location.reload();
+        });
+    }
+
+    // ==========================================
+    // ENGINE 2: PACKOUT PHOTOS
+    // ==========================================
+    const pStartBtn = document.getElementById('packout-cam-start');
+    const pVideo = document.getElementById('packout-video');
+    const pSnapBtn = document.getElementById('packout-cam-snap');
+    const pForm = document.getElementById('packout-form');
+    const pSubmitBtn = document.getElementById('packout-submit-btn');
+    let pStream = null;
+    let pBlobs = [];
+
+    if(pStartBtn) {
+        // We reuse the hidden canvas from Room photos to save memory
+        const canvas = document.getElementById('room-canvas') || document.createElement('canvas');
+        
+        pStartBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if(pStream) {
+                pStream.getTracks().forEach(t => t.stop()); pStream = null;
+                pVideo.style.display = 'none'; pSnapBtn.style.display = 'none';
+                pStartBtn.textContent = 'Open Packout Camera';
+                return;
+            }
+            try {
+                pStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                pVideo.srcObject = pStream; pVideo.style.display = 'block';
+                await pVideo.play();
+                pStartBtn.textContent = 'Close Camera'; pSnapBtn.style.display = 'block';
+            } catch(err) { alert('Camera access failed.'); }
+        });
+
+        pSnapBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            canvas.width = pVideo.videoWidth; canvas.height = pVideo.videoHeight;
+            canvas.getContext('2d').drawImage(pVideo, 0, 0);
+            
+            canvas.toBlob(blob => {
+                pBlobs.push(blob);
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(blob);
+                img.style.height = '80px'; img.style.borderRadius = '6px';
+                document.getElementById('packout-gallery').appendChild(img);
+                pSubmitBtn.textContent = `Save Item & Upload (${pBlobs.length} Photos)`;
+            }, 'image/jpeg', 0.85);
+        });
+
+        pForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            pSubmitBtn.disabled = true; pSubmitBtn.textContent = 'Processing...';
+            
+            const fd = new FormData(pForm);
+            pBlobs.forEach((blob, i) => {
+                fd.append('packout_photo', blob, `packout_${Date.now()}_${i}.jpg`);
+            });
+
+            fetch(pForm.action, { method: 'POST', body: fd })
+            .then(() => window.location.reload())
+            .catch(() => { alert("Upload error"); pSubmitBtn.disabled = false; });
+        });
+    }
+});
+</script>
+
 {% endblock %}
