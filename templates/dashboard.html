@@ -2,6 +2,22 @@
 {% block content %}
 <h2>Dashboard</h2>
 
+<section class="cc-card mb-4" style="background: #1a1b1d; border-left: 4px solid #1E88E5;">
+  <h3>Timecard: {{ current_user.name or current_user.username }}</h3>
+  <div class="d-flex gap-3 mt-2">
+    <form method="post" action="{{ url_for('employee_clock_in') }}">
+      <button class="btn btn-success" {% if current_user.id in active_sessions|map(attribute='user_id') %}disabled{% endif %}>
+        Clock In
+      </button>
+    </form>
+    <form method="post" action="{{ url_for('employee_clock_out') }}">
+      <button class="btn btn-danger" {% if current_user.id not in active_sessions|map(attribute='user_id') %}disabled{% endif %}>
+        Clock Out
+      </button>
+    </form>
+  </div>
+</section>
+
 <div class="row mb-3">
   <div class="col-6 col-md-3 mb-2">
     <div class="cc-card text-center">
