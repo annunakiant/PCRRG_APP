@@ -1,29 +1,29 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% block content %}
 <h2>Sign Contract for Job {{ job.job_number }} — {{ job.title }}</h2>
 
-<div class="cc-card mb-3">
+<div class='cc-card mb-3'>
   <p><strong>Template ID:</strong> {{ contract.template_id }}</p>
   <p><strong>Status:</strong> {{ 'Signed' if contract.signed else 'Pending' }}</p>
 </div>
 
-<form method="post" class="cc-card">
-  <div class="mb-2">
+<form method='post' class='cc-card'>
+  <div class='mb-2'>
     <label>Signer Name</label>
-    <input class="form-control" type="text" name="signer_name" required>
+    <input class='form-control' type='text' name='signer_name' required>
   </div>
-  <div class="mb-2">
+  <div class='mb-2'>
     <label>Signer Email</label>
-    <input class="form-control" type="email" name="signer_email" required>
+    <input class='form-control' type='email' name='signer_email'>
   </div>
-  <div class="mb-2">
+  <div class='mb-2'>
     <label>Latitude (optional)</label>
-    <input class="form-control" type="text" name="lat">
+    <input class='form-control' type='text' name='lat'>
   </div>
-  <div class="mb-2">
+  <div class='mb-2'>
     <label>Longitude (optional)</label>
-    <input class="form-control" type="text" name="lon">
+    <input class='form-control' type='text' name='lon'>
   </div>
-  <button class="btn btn-primary">Sign Contract</button>
+  <button class='btn btn-primary'>Sign Contract</button>
 </form>
 {% endblock %}

@@ -446,3 +446,14 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 {% endblock %}
+
+
+
+<div class='cc-card mt-3'>
+  <h3>Job Map</h3>
+  <div id='job-map' data-url='{{ url_for("job_map_data", job_id=job.id) }}'></div>
+</div>
+
+<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>
+<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
+<script src='/static/js/job_map.js'></script>
