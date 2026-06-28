@@ -1211,6 +1211,7 @@ def attach_contract(job_id):
 
 
 @app.route('/jobs/<int:job_id>/contracts/<int:contract_id>/sign', methods=['GET', 'POST'])
+
 def sign_contract(job_id, contract_id):
     job = Job.query.get_or_404(job_id)
     jc = JobContract.query.get_or_404(contract_id)
@@ -1218,7 +1219,6 @@ def sign_contract(job_id, contract_id):
     if request.method == 'POST':
         signer_name = request.form.get('signer_name')
         signer_email = request.form.get('signer_email')
-
         jc.signed = True
         jc.signed_at = datetime.utcnow()
         jc.signer_name = signer_name
@@ -1226,15 +1226,25 @@ def sign_contract(job_id, contract_id):
 
         signer_lat = request.form.get('lat')
         signer_lon = request.form.get('lon')
-
         jc.latitude = float(signer_lat) if signer_lat else None
         jc.longitude = float(signer_lon) if signer_lon else None
+
+        sig_data = request.form.get('signature_data')
+        if sig_data:
+            sig_bytes = base64.b64decode(sig_data.split(',')[1])
+            os.makedirs(app.config['UPLOAD_FOLDER_CONTRACTS'], exist_ok=True)
+            sig_filename = f"signature_{job.id}_{contract_id}_{int(datetime.utcnow().timestamp())}.png"
+            sig_path = os.path.join(app.config['UPLOAD_FOLDER_CONTRACTS'], sig_filename)
+            with open(sig_path, 'wb') as sig_file:
+                sig_file.write(sig_bytes)
+            jc.signature_file = sig_filename
 
         db.session.commit()
         flash('Contract signed.')
         return redirect(url_for('view_job', job_id=job.id))
 
     return render_template('sign_contract.html', job=job, contract=jc)
+
 
 # -------------------------------------------------------------------------
 # SHARE + ARCHIVE

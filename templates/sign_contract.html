@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% block content %}
 <h2>Sign Contract for Job {{ job.job_number }} — {{ job.title }}</h2>
@@ -7,7 +8,7 @@
   <p><strong>Status:</strong> {{ 'Signed' if contract.signed else 'Pending' }}</p>
 </div>
 
-<form method='post' class='cc-card'>
+<form id='sig-form' method='post' class='cc-card'>
   <div class='mb-2'>
     <label>Signer Name</label>
     <input class='form-control' type='text' name='signer_name' required>
@@ -24,6 +25,17 @@
     <label>Longitude (optional)</label>
     <input class='form-control' type='text' name='lon'>
   </div>
-  <button class='btn btn-primary'>Sign Contract</button>
+
+  <h4 class='mt-3'>Signature</h4>
+  <canvas id='sig-canvas' width='400' height='200' style='border:1px solid #333; border-radius:8px;'></canvas>
+
+  <input type='hidden' id='signature_data' name='signature_data'>
+
+  <div class='mt-2'>
+    <button type='button' id='sig-clear' class='btn btn-secondary'>Clear</button>
+    <button type='button' id='sig-submit' class='btn btn-primary'>Submit Signature</button>
+  </div>
 </form>
+
+<script src='/static/js/signature.js'></script>
 {% endblock %}
