@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="cc-card">
+<h2>Roles & Permissions</h2>
+<form method="post" action="{{ url_for('admin_roles') }}" class="mb-4">
+<div class="mb-2"><label class="form-label">New Role Name</label><input type="text" name="name" class="form-control"></div>
+<div class="mb-2"><label class="form-label">Description (optional)</label><input type="text" name="description" class="form-control"></div>
+<button class="btn btn-primary">Create Role</button></form>
+<h3>Existing Roles</h3>
+<div class="row">
+{% for role in roles %}
+<div class="col-md-4"><div class="cc-card">
+<h4>{{ role.name }}</h4><p>{{ role.description }}</p>
+<form method="post" action="{{ url_for('admin_roles_permissions', role_id=role.id) }}">
+<div class="mb-2"><label class="form-label">Permissions</label>
+{% for perm in permissions %}
+<div class="form-check">
+<input class="form-check-input" type="checkbox" name="permissions" value="{{ perm.name }}" {% for rp in role.role_permissions %}{% if rp.permission.name == perm.name %}checked{% endif %}{% endfor %}>
+<label class="form-check-label">{{ perm.name }}</label>
+</div>
+{% endfor %}
+</div>
+<button class="btn btn-primary btn-sm">Save Permissions</button>
+</form></div></div>
+{% endfor %}
+</div></div>
+{% endblock %}

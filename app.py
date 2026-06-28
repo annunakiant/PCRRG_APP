@@ -1572,3 +1572,150 @@ def delete_photo(job_id, photo_id):
     db.session.commit()
     flash('Photo deleted.')
     return redirect(url_for('view_job', job_id=job_id))
+
+# =========================
+# RBAC + PWA BLOCK 1
+# =========================
+from functools import wraps
+
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False)
+    description = db.Column(db.String(255))
+
+class Permission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False)
+
+class RolePermission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey("role.id"), nullable=False)
+    permission_id = db.Column(db.Integer, db.ForeignKey("permission.id"), nullable=False)
+    role = db.relationship("Role", backref=db.backref("role_permissions", lazy="dynamic", cascade="all, delete-orphan"))
+    permission = db.relationship("Permission", backref=db.backref("permission_roles", lazy="dynamic", cascade="all, delete-orphan"))
+
+class UserRole(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    role_id = db.Column(db.Integer, db.ForeignKey("role.id"), nullable=False)
+    user = db.relationship("User", backref=db.backref("user_roles", lazy="dynamic", cascade="all, delete-orphan"))
+    role = db.relationship("Role", backref=db.backref("users", lazy="dynamic", cascade="all, delete-orphan"))
+
+BASE_PERMISSIONS = [
+    "view_jobs", "edit_jobs", "delete_jobs", "upload_photos", "delete_photos",
+    "manage_inventory", "manage_users", "manage_roles", "approve_contracts",
+    "edit_contracts", "edit_tasks", "clock_in_out_edit"
+]
+
+def bootstrap_permissions():
+    for name in BASE_PERMISSIONS:
+        if not Permission.query.filter_by(name=name).first():
+            db.session.add(Permission(name=name))
+    db.session.commit()
+
+def user_has_permission(perm_name):
+    if not current_user.is_authenticated:
+        return False
+    if getattr(current_user, "role", "") == "admin":
+        return True
+    perm = Permission.query.filter_by(name=perm_name).first()
+    if not perm:
+        return False
+    for ur in current_user.user_roles:
+        for rp in ur.role.role_permissions:
+            if rp.permission_id == perm.id:
+                return True
+    return False
+
+def permission_required(perm_name):
+    def decorator(f):
+        @wraps(f)
+        @login_required
+        def wrapped(*args, **kwargs):
+            if not user_has_permission(perm_name):
+                flash("Permission denied.")
+                return redirect(url_for("dashboard"))
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
+
+@app.context_processor
+def inject_globals():
+    theme = ThemeSettings.query.first()
+    return {
+        "is_admin": is_admin(),
+        "current_user": current_user,
+        "theme": theme,
+        "user_has_permission": user_has_permission,
+    }
+
+@app.route("/admin/rbac/bootstrap", methods=["POST"])
+@login_required
+def admin_rbac_bootstrap():
+    if not is_admin():
+        flash("Admins only.")
+        return redirect(url_for("dashboard"))
+    bootstrap_permissions()
+    flash("RBAC base permissions initialized.")
+    return redirect(url_for("admin_home"))
+
+@app.route("/admin/roles", methods=["GET", "POST"])
+@login_required
+def admin_roles():
+    if not is_admin():
+        flash("Admins only.")
+        return redirect(url_for("dashboard"))
+    if request.method == "POST":
+        name = request.form.get("name")
+        description = request.form.get("description")
+        if not name:
+            flash("Role name is required.")
+            return redirect(url_for("admin_roles"))
+        if Role.query.count() >= 3:
+            flash("Maximum of 3 roles reached.")
+            return redirect(url_for("admin_roles"))
+        if Role.query.filter_by(name=name).first():
+            flash("Role name already exists.")
+            return redirect(url_for("admin_roles"))
+        db.session.add(Role(name=name, description=description))
+        db.session.commit()
+        flash("Role created.")
+        return redirect(url_for("admin_roles"))
+    roles = Role.query.order_by(Role.name).all()
+    permissions = Permission.query.order_by(Permission.name).all()
+    return render_template("admin_roles.html", roles=roles, permissions=permissions)
+
+@app.route("/admin/roles/<int:role_id>/permissions", methods=["POST"])
+@login_required
+def admin_roles_permissions(role_id):
+    if not is_admin():
+        flash("Admins only.")
+        return redirect(url_for("dashboard"))
+    role = Role.query.get_or_404(role_id)
+    RolePermission.query.filter_by(role_id=role.id).delete()
+    selected = request.form.getlist("permissions")
+    for pname in selected:
+        perm = Permission.query.filter_by(name=pname).first()
+        if perm:
+            db.session.add(RolePermission(role_id=role.id, permission_id=perm.id))
+    db.session.commit()
+    flash("Role permissions updated.")
+    return redirect(url_for("admin_roles"))
+
+@app.route("/admin/users/<int:user_id>/roles", methods=["POST"])
+@login_required
+def admin_users_assign_roles(user_id):
+    if not is_admin():
+        flash("Admins only.")
+        return redirect(url_for("dashboard"))
+    user = User.query.get_or_404(user_id)
+    UserRole.query.filter_by(user_id=user.id).delete()
+    selected_role_ids = request.form.getlist("roles")
+    for rid in selected_role_ids:
+        role = Role.query.get(int(rid))
+        if role:
+            db.session.add(UserRole(user_id=user.id, role_id=role.id))
+    db.session.commit()
+    flash("User roles updated.")
+    return redirect(url_for("admin_users"))
+
