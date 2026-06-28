@@ -11,7 +11,7 @@
       <div style="font-size:0.8rem;color:#9ca3af;">
         {{ e.timestamp.strftime('%Y-%m-%d %H:%M') if e.timestamp }} · {{ e.type|capitalize }}
       </div>
-      <div style="font-weight:600;">{{ e.label }}</div>
+      <div style="font-weight:600;">{% if e.type == 'photo' %}📷{% elif e.type == 'contract' %}📝{% elif e.type == 'packout' %}📦{% elif e.type == 'task' %}✔{% endif %} {{ e.label }}</div>
     </li>
     {% endfor %}
   </ul>

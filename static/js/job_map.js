@@ -13,13 +13,13 @@ document.addEventListener('DOMContentLoaded', function () {
       var bounds = [];
 
       (data.photos || []).forEach(function (p) {
-        var m = L.marker([p.lat, p.lon]).addTo(map);
+        var m = L.marker([p.lat, p.lon], { icon: L.icon({ iconUrl: '/static/icons/photo.png', iconSize: [28, 28] }) }).addTo(map);
         m.bindPopup('<strong>' + p.label + '</strong><br>' + p.filename);
         bounds.push([p.lat, p.lon]);
       });
 
       (data.contracts || []).forEach(function (c) {
-        var m = L.marker([c.lat, c.lon]).addTo(map);
+        var m = L.marker([c.lat, c.lon], { icon: L.icon({ iconUrl: c.label.includes('Signed') ? '/static/icons/contract_signed.png' : '/static/icons/contract_pending.png', iconSize: [28, 28] }) }).addTo(map);
         m.bindPopup('<strong>' + c.label + '</strong><br>' + c.signer);
         bounds.push([c.lat, c.lon]);
       });

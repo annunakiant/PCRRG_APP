@@ -171,6 +171,8 @@
       for(let i = 0; i < capturedBatch.length; i++) {
           const item = capturedBatch[i];
           const formData = new FormData();
+const category = document.getElementById('photo-category')?.value || '';
+formData.append('category', category);
           formData.append('photo', item.file);
           formData.append('category', item.category);
           if(item.lat) formData.append('lat', item.lat);
