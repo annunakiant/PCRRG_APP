@@ -1,0 +1,41 @@
+# === ANDROID LOGIN REDIRECT FIX PATCH ===
+# This patch adds:
+# - safe_redirect_target()
+# - protected redirect handling
+# - Android/PWA loop prevention
+
+# Insert this helper near the top of app.py (after imports):
+
+from urllib.parse import urlparse, urljoin
+
+def safe_redirect_target(target):
+    """Prevents Android/PWA redirect loops by validating next= URLs."""
+    if not target:
+        return None
+
+    host_url = urlparse(request.host_url)
+    redirect_url = urlparse(urljoin(request.host_url, target))
+
+    # Only allow redirects inside your own domain
+    if redirect_url.scheme in ("http", "https") and host_url.netloc == redirect_url.netloc:
+        return redirect_url.path
+
+    return None
+
+
+# === PATCH LOGIN ROUTE ===
+# Find your login POST handler and replace the redirect logic with:
+
+next_page = request.args.get("next")
+next_page = safe_redirect_target(next_page)
+
+# Android/PWA fix:
+# Never redirect immediately to protected routes after login.
+protected_prefixes = ("/jobs", "/admin", "/packout", "/contracts")
+
+if not next_page or next_page.startswith(protected_prefixes):
+    next_page = url_for("dashboard")
+
+return redirect(next_page)
+
+# === END PATCH ===
