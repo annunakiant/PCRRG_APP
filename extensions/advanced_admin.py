@@ -1,8 +1,10 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from app import db, User, ThemeSettings, CustomTab
+
+advanced_admin_bp = Blueprint('advanced_admin', __name__, url_prefix='/advanced-admin')
+
 ﻿from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import db, User, ThemeSettings, CustomTab
-
-advanced_admin_bp = Blueprint('advanced_admin', __name__, url_prefix='/xadmin')
 
 def is_admin():
     return current_user.is_authenticated and getattr(current_user, 'role', '') == 'admin'
