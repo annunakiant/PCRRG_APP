@@ -667,7 +667,11 @@ def view_job(job_id):
 @login_required
 def report_builder(job_id):
     job = Job.query.get_or_404(job_id)
-    return render_template('report_builder.html', job=job)
+    return render_template(
+        'report_builder.html',
+        job=job,
+        JobPhoto=JobPhoto
+    )
 
 
 @app.route('/jobs/<int:job_id>/export/companycam', methods=['POST'])
