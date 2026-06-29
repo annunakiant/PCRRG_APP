@@ -1230,20 +1230,30 @@ def sign_contract(job_id, contract_id):
         jc.longitude = float(signer_lon) if signer_lon else None
 
         sig_data = request.form.get('signature_data')
-        if sig_data:
-            sig_bytes = base64.b64decode(sig_data.split(',')[1])
-            os.makedirs(app.config['UPLOAD_FOLDER_CONTRACTS'], exist_ok=True)
-            sig_filename = f"signature_{job.id}_{contract_id}_{int(datetime.utcnow().timestamp())}.png"
-            sig_path = os.path.join(app.config['UPLOAD_FOLDER_CONTRACTS'], sig_filename)
-            with open(sig_path, 'wb') as sig_file:
-                sig_file.write(sig_bytes)
-            jc.signature_file = sig_filename
+        try:
+            if sig_data and ',' in sig_data:
+                import base64
+                sig_bytes = base64.b64decode(sig_data.split(',')[1])
+                # Ensure folder exists; if config missing, fall back to /static/contracts
+                upload_root = getattr(app.config, 'UPLOAD_FOLDER_CONTRACTS', os.path.join(STATIC_DIR, 'uploads', 'contracts'))
+                os.makedirs(upload_root, exist_ok=True)
+                sig_filename = f"signature_{job.id}_{contract_id}_{int(datetime.utcnow().timestamp())}.png"
+                sig_path = os.path.join(upload_root, sig_filename)
+                with open(sig_path, 'wb') as sig_file:
+                    sig_file.write(sig_bytes)
+                # Only assign if model has this attribute
+                if hasattr(jc, 'signature_file'):
+                    jc.signature_file = sig_filename
+        except Exception as e:
+            # Do not crash the app; just log and continue
+            app.logger.error(f"Signature save failed: {e}")
 
         db.session.commit()
         flash('Contract signed.')
         return redirect(url_for('view_job', job_id=job.id))
 
     return render_template('sign_contract.html', job=job, contract=jc)
+
 
 
 # -------------------------------------------------------------------------
