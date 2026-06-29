@@ -57,7 +57,7 @@
       <strong>{{ cat }}</strong>
       <button class="btn btn-sm btn-outline-secondary" type="button" onclick="this.nextElementSibling.classList.toggle('d-none')">Toggle</button>
     </div>
-    <div class="mt-2">
+    <div class="mt-2 d-none">
       {% for p in plist %}
         <div style="background:#1a1b1d;padding:8px;border-radius:6px;border:1px solid #2a2b2e;width:180px;margin-bottom:10px;">
           <div style="font-weight:600;">{{ p.category or p.location_label or 'Room' }}</div>
