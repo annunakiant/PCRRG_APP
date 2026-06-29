@@ -708,115 +708,143 @@ def export_job_companycam(job_id):
     # Build PDF (landscape, Encircle-style summaries + CompanyCam-style grids)
     pdf = canvas.Canvas(pdf_path, pagesize=landscape(letter))
 
-    # Page 1 — Job Summary
-    pdf.setFont("Helvetica-Bold", 20)
-    pdf.drawString(50, 550, f"Job Report — {job.job_number}")
-    pdf.setFont("Helvetica", 12)
-    pdf.drawString(50, 520, f"Title: {job.title}")
-    pdf.drawString(50, 500, f"Client: {job.client_name or ''}")
-    pdf.drawString(50, 480, f"Address: {job.address or ''}")
-    pdf.drawString(50, 460, f"Service: {job.service_type or ''}")
-    pdf.drawString(50, 440, f"Status: {job.status}")
-    pdf.showPage()
+    
+# -----------------------------
+# COMPANYCAM / ENCIRCLE PDF ENGINE (CORRECTED)
+# -----------------------------
+pdf = canvas.Canvas(pdf_path, pagesize=landscape(letter))
 
-    # Page 2 — Task Summary
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(50, 550, "Task Summary")
-    pdf.setFont("Helvetica", 11)
-    y = 520
-    for t in tasks:
-        status = "Done" if t.completed else "Pending"
-        pdf.drawString(50, y, f"{t.label} — {status}")
-        y -= 18
-        if y < 80:
-            pdf.showPage()
-            pdf.setFont("Helvetica-Bold", 18)
-            pdf.drawString(50, 550, "Task Summary (cont.)")
-            pdf.setFont("Helvetica", 11)
-            y = 520
-    pdf.showPage()
+# Load logo (top-left)
+try:
+    logo_path = os.path.join(STATIC_DIR, "logo.png")
+    pdf.drawImage(logo_path, 40, 500, width=120, height=120, preserveAspectRatio=True)
+except:
+    pass
 
-    # Page 3 — Packout Summary
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(50, 550, "Packout Summary")
-    pdf.setFont("Helvetica", 11)
-    y = 520
-    for item in packout_items:
-        pdf.drawString(50, y, f"{item.name} x{item.quantity} @ {item.location or ''} ({item.condition or ''})")
-        y -= 18
-        if y < 80:
-            pdf.showPage()
-            pdf.setFont("Helvetica-Bold", 18)
-            pdf.drawString(50, 550, "Packout Summary (cont.)")
-            pdf.setFont("Helvetica", 11)
-            y = 520
-    pdf.showPage()
+# PAGE 1 — JOB SUMMARY
+pdf.setFont("Helvetica-Bold", 26)
+pdf.drawString(180, 520, "Professional Cleaning Restoration & Rehab Services Group")
 
-    # Page 4 — Contracts Summary
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(50, 550, "Contracts Summary")
-    pdf.setFont("Helvetica", 11)
-    y = 520
-    for c in contracts:
-        status = "Signed" if c.signed else "Pending"
-        pdf.drawString(50, y, f"Template #{c.template_id} — {status} — {c.signer_name or ''}")
-        y -= 18
-        if y < 80:
-            pdf.showPage()
-            pdf.setFont("Helvetica-Bold", 18)
-            pdf.drawString(50, 550, "Contracts Summary (cont.)")
-            pdf.setFont("Helvetica", 11)
-            y = 520
-    pdf.showPage()
+pdf.setFont("Helvetica-Bold", 20)
+pdf.drawString(180, 490, f"Job Report — {job.job_number}")
 
-    # Photo pages — CompanyCam-style grid (thumbnails)
-    per_row = max(2, min(layout, 4))
-    per_page = per_row * 2
-    index = 0
-    thumb_size = 150
+pdf.setFont("Helvetica", 12)
+pdf.drawString(50, 450, f"Title: {job.title}")
+pdf.drawString(50, 430, f"Client: {job.client_name or ''}")
+pdf.drawString(50, 410, f"Address: {job.address or ''}")
+pdf.drawString(50, 390, f"Service: {job.service_type or ''}")
+pdf.drawString(50, 370, f"Status: {job.status}")
+pdf.drawString(50, 350, f"Created: {job.created_at.strftime('%Y-%m-%d %H:%M')}")
+pdf.showPage()
 
-    while index < len(photos):
-        chunk = photos[index:index+per_page]
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawString(50, 550, "Photo Evidence")
-        x_start = 50
-        y_start = 500
+# PAGE 2 — TASK SUMMARY
+pdf.setFont("Helvetica-Bold", 22)
+pdf.drawString(50, 550, "Task Summary")
 
-        for i, p in enumerate(chunk):
-            row = i // per_row
-            col = i % per_row
-            x = x_start + col * (thumb_size + 20)
-            y = y_start - row * (thumb_size + 60)
-
-            # Resolve absolute path from STATIC_DIR + relative filename
-            rel = p.filename.replace("\\", "/").replace("\\", "/")
-            abs_path = os.path.join(STATIC_DIR, rel)
-            try:
-                pdf.drawImage(abs_path, x, y, width=thumb_size, height=thumb_size, preserveAspectRatio=True, anchor='c')
-            except Exception:
-                pdf.setFont("Helvetica", 8)
-                pdf.drawString(x, y + thumb_size/2, "[Image missing]")
-
-            meta_y = y - 12
-            pdf.setFont("Helvetica", 8)
-            line = []
-            if "numbers" in metadata:
-                line.append(f"#{p.id}")
-            if "captured_by" in metadata and p.user_id:
-                line.append(f"User {p.user_id}")
-            if "location" in metadata and p.location_label:
-                line.append(p.location_label)
-            if "date" in metadata and p.uploaded_at:
-                line.append(p.uploaded_at.strftime("%Y-%m-%d %H:%M"))
-            if "tags" in metadata and p.category:
-                line.append(p.category)
-            if line:
-                pdf.drawString(x, meta_y, " | ".join(line))
-
+pdf.setFont("Helvetica", 12)
+y = 520
+for t in tasks:
+    status = "Done" if t.completed else "Pending"
+    pdf.drawString(50, y, f"{t.label} — {status}")
+    y -= 18
+    if y < 80:
         pdf.showPage()
-        index += per_page
+        pdf.setFont("Helvetica-Bold", 22)
+        pdf.drawString(50, 550, "Task Summary (cont.)")
+        pdf.setFont("Helvetica", 12)
+        y = 520
+pdf.showPage()
 
-    pdf.save()
+# PAGE 3 — PACKOUT SUMMARY
+pdf.setFont("Helvetica-Bold", 22)
+pdf.drawString(50, 550, "Packout Summary")
+
+pdf.setFont("Helvetica", 12)
+y = 520
+for item in packout_items:
+    pdf.drawString(50, y, f"{item.name} x{item.quantity} @ {item.location or ''} ({item.condition or ''})")
+    y -= 18
+    if y < 80:
+        pdf.showPage()
+        pdf.setFont("Helvetica-Bold", 22)
+        pdf.drawString(50, 550, "Packout Summary (cont.)")
+        pdf.setFont("Helvetica", 12)
+        y = 520
+pdf.showPage()
+
+# PAGE 4 — CONTRACT SUMMARY
+pdf.setFont("Helvetica-Bold", 22)
+pdf.drawString(50, 550, "Contracts Summary")
+
+pdf.setFont("Helvetica", 12)
+y = 520
+for c in contracts:
+    status = "Signed" if c.signed else "Pending"
+    pdf.drawString(50, y, f"Template #{c.template_id} — {status} — {c.signer_name or ''}")
+    y -= 18
+    if y < 80:
+        pdf.showPage()
+        pdf.setFont("Helvetica-Bold", 22)
+        pdf.drawString(50, 550, "Contracts Summary (cont.)")
+        pdf.setFont("Helvetica", 12)
+        y = 520
+pdf.showPage()
+
+# PHOTO PAGES — COMPANYCAM GRID (FIXED)
+per_row = max(2, min(layout, 4))
+per_page = per_row * 2
+thumb_w = 260
+thumb_h = 180
+padding_x = 40
+padding_y = 40
+
+index = 0
+while index < len(photos):
+    chunk = photos[index:index+per_page]
+
+    pdf.setFont("Helvetica-Bold", 22)
+    pdf.drawString(50, 550, "Photo Evidence")
+
+    for i, p in enumerate(chunk):
+        row = i // per_row
+        col = i % per_row
+
+        x = 50 + col * (thumb_w + padding_x)
+        y = 500 - row * (thumb_h + padding_y)
+
+        rel = p.filename.replace("\", "/")
+        abs_path = os.path.join(STATIC_DIR, rel)
+
+        try:
+            pdf.drawImage(abs_path, x, y, width=thumb_w, height=thumb_h, preserveAspectRatio=True)
+        except:
+            pdf.setFont("Helvetica", 10)
+            pdf.drawString(x, y + thumb_h/2, "[Image missing]")
+
+        # Metadata
+        meta_y = y - 14
+        pdf.setFont("Helvetica", 10)
+        meta = []
+
+        if "numbers" in metadata:
+            meta.append(f"#{p.id}")
+        if "captured_by" in metadata and p.user_id:
+            meta.append(f"Tech {p.user_id}")
+        if "location" in metadata and p.location_label:
+            meta.append(p.location_label)
+        if "date" in metadata and p.uploaded_at:
+            meta.append(p.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+        if "tags" in metadata and p.category:
+            meta.append(p.category)
+
+        if meta:
+            pdf.drawString(x, meta_y, " | ".join(meta))
+
+    pdf.showPage()
+    index += per_page
+
+pdf.save()
+
 
     # Build ZIP package: PDF + full-res photos + packout CSV + contracts metadata
     zip_buffer = io.BytesIO()
