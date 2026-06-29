@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from flask import (
     Flask, render_template, redirect, url_for,
-    request, flash, jsonify, send_from_directory
+    request, flash, jsonify, send_from_directory, send_file
 )
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
@@ -670,9 +670,11 @@ def report_builder(job_id):
     return render_template(
         'report_builder.html',
         job=job,
-        JobPhoto=JobPhoto
+        JobPhoto=JobPhoto,
+        PackoutItem=PackoutItem,
+        JobContract=JobContract,
+        JobTask=JobTask
     )
-
 
 @app.route('/jobs/<int:job_id>/export/companycam', methods=['POST'])
 @login_required
