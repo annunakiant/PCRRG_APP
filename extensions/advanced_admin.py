@@ -1,6 +1,6 @@
 ﻿from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from app import db, User, ThemeSettings, CustomTab
+from models import db, User, ThemeSettings, CustomTab
 
 advanced_admin_bp = Blueprint('advanced_admin', __name__, url_prefix='/xadmin')
 
