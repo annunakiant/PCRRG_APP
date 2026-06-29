@@ -36,7 +36,7 @@ PACKOUT_FOLDER = os.path.join(UPLOAD_ROOT, 'packouts')
 CONTRACTS_FOLDER = os.path.join(UPLOAD_ROOT, 'contracts')
 ARCHIVE_FOLDER = os.path.join(data_dir, 'archive')
 
-for p in (UPLOAD_ROOT, PHOTOS_FOLDER, PACKOUT_FOLDER, CONTRACTS_FOLDER, ARCHIVE_FOLDER):
+    for p in (UPLOAD_ROOT, PHOTOS_FOLDER, PACKOUT_FOLDER, CONTRACTS_FOLDER, ARCHIVE_FOLDER):
     os.makedirs(p, exist_ok=True)
 
 app.config['UPLOAD_FOLDER_PHOTOS'] = PHOTOS_FOLDER
@@ -811,8 +811,8 @@ def export_job_companycam(job_id):
             x = 50 + col * (thumb_w + padding_x)
             y = 500 - row * (thumb_h + padding_y)
     
-            rel = p.filename.replace("\\", "/")
-            abs_path = os.path.join(STATIC_DIR, rel)
+    rel = p.filename.replace("\\", "/")
+    abs_path = os.path.join(STATIC_DIR, rel)
     
             try:
                 pdf.drawImage(abs_path, x, y, width=thumb_w, height=thumb_h, preserveAspectRatio=True)
@@ -846,17 +846,17 @@ def export_job_companycam(job_id):
     
     
         # Build ZIP package: PDF + full-res photos + packout CSV + contracts metadata
-        zip_buffer = io.BytesIO()
-        z = zipfile.ZipFile(zip_buffer, 'w')
+    zip_buffer = io.BytesIO()
+    z = zipfile.ZipFile(zip_buffer, 'w')
     
         # Add PDF
-        with open(pdf_path, 'rb') as fpdf:
+    with open(pdf_path, 'rb') as fpdf:
             z.writestr(pdf_filename, fpdf.read())
     
         # Add photos (full resolution)
-        for p in photos:
-            rel = p.filename.replace("\\", "/")
-            abs_path = os.path.join(STATIC_DIR, rel)
+    for p in photos:
+    rel = p.filename.replace("\\", "/")
+    abs_path = os.path.join(STATIC_DIR, rel)
             if os.path.exists(abs_path):
                 with open(abs_path, "rb") as fimg:
                     z.writestr(f"photos/{os.path.basename(rel)}", fimg.read())
@@ -891,10 +891,10 @@ def export_job_companycam(job_id):
         z.writestr("contracts.json", _json.dumps(contracts_data, indent=2))
     
         z.close()
-        zip_buffer.seek(0)
+    zip_buffer.seek(0)
     
         return send_file(
-            zip_buffer,
+    zip_buffer,
             mimetype="application/zip",
             as_attachment=True,
             download_name=f"job_{job.id}_companycam_report.zip"
@@ -1049,7 +1049,7 @@ def import_checklist():
         os.makedirs(import_dir, exist_ok=True)
 
         filename = secure_filename(file.filename)
-        abs_path = os.path.join(import_dir, filename)
+    abs_path = os.path.join(import_dir, filename)
         file.save(abs_path)
 
         # Extract steps
@@ -1064,7 +1064,7 @@ def import_checklist():
             try:
                 from docx import Document
                 doc = Document(abs_path)
-                for p in doc.paragraphs:
+    for p in doc.paragraphs:
                     if p.text.strip():
                         steps.append(p.text.strip())
             except:
@@ -1565,7 +1565,7 @@ def archive_job(job_id):
                 'latitude': p.latitude,
                 'longitude': p.longitude
             }
-            for p in job.photos.all()
+    for p in job.photos.all()
         ],
         'packout_items': [
             {
