@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Build Report — {{ job.job_number }} ({{ job.title }})</h2>
+
+<p class="mt-2 mb-4">
+  Select photos, layout, and options below to generate a full CompanyCam-style report
+  with Encircle-style summaries (job, tasks, packout, contracts) plus a ZIP package
+  containing full-resolution originals.
+</p>
+
+<h4>Photo Categories</h4>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  {% set cats = ["Before","During","After","Damage","Equipment","Setup","Service","Cleanup"] %}
+  {% for cat in cats %}
+    <label class="btn btn-outline-primary btn-sm mb-1">
+      <input type="checkbox" class="cat-filter" value="{{ cat }}"> {{ cat }}
+    </label>
+  {% endfor %}
+</div>
+
+<h4>Photos</h4>
+<div id="photo-grid" class="d-flex flex-wrap gap-3 mb-4">
+  {% for p in job.photos.order_by(JobPhoto.uploaded_at.desc()).all() %}
+    <div class="photo-card"
+         data-cat="{{ p.category or '' }}"
+         style="width:180px;background:#1a1b1d;padding:8px;border-radius:6px;color:#eee;">
+      <div class="form-check mb-1">
+        <input class="form-check-input photo-select" type="checkbox" value="{{ p.id }}" id="photo{{ p.id }}">
+        <label class="form-check-label small" for="photo{{ p.id }}">
+          Select
+        </label>
+      </div>
+      <img src="/static/{{ p.filename }}" style="width:100%;border-radius:4px;">
+      <div class="small text-muted mt-1">
+        {{ p.category or "Uncategorized" }}<br>
+        {{ p.location_label or "" }}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<h4>Layout</h4>
+<select id="layout" class="form-select mb-3" style="max-width:260px;">
+  <option value="4">4 per row (CompanyCam)</option>
+  <option value="3">3 per row</option>
+  <option value="2">2 per row</option>
+</select>
+
+<h4>Metadata</h4>
+<div class="d-flex flex-wrap gap-2 mb-4">
+  {% for meta in ["numbers","captured_by","location","date","tags"] %}
+    <label class="btn btn-outline-secondary btn-sm mb-1">
+      <input type="checkbox" class="meta-toggle" value="{{ meta }}"> {{ meta.replace("_"," ").title() }}
+    </label>
+  {% endfor %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h4 class="card-title">CompanyCam-style PDF + ZIP</h4>
+    <p class="card-text">
+      Generates a landscape PDF with Encircle-style summary pages and CompanyCam-style
+      photo grids (thumbnails), plus a ZIP containing full-resolution originals,
+      packout CSV, and contract metadata.
+    </p>
+    <button id="export-btn" class="btn btn-success w-100">
+      Generate CompanyCam/Encircle Report (PDF + ZIP)
+    </button>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.cat-filter').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const active = Array.from(document.querySelectorAll('.cat-filter:checked')).map(x => x.value);
+    document.querySelectorAll('.photo-card').forEach(card => {
+      const cat = card.dataset.cat || "";
+      card.style.display = (active.length === 0 || active.includes(cat)) ? "block" : "none";
+    });
+  });
+});
+
+document.getElementById('export-btn').addEventListener('click', () => {
+  const selectedPhotos = Array.from(document.querySelectorAll('.photo-select:checked')).map(x => x.value);
+  const layout = document.getElementById('layout').value;
+  const metadata = Array.from(document.querySelectorAll('.meta-toggle:checked')).map(x => x.value);
+
+  fetch("{{ url_for('export_job_companycam', job_id=job.id) }}", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      photos: selectedPhotos,
+      layout: layout,
+      metadata: metadata
+    })
+  })
+  .then(r => {
+    if (!r.ok) throw new Error("Export failed");
+    return r.blob();
+  })
+  .then(blob => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "job_{{ job.id }}_companycam_report.zip";
+    a.click();
+  })
+  .catch(err => {
+    alert("Report export failed. Please try again.");
+    console.error(err);
+  });
+});
+</script>
+
+{% endblock %}

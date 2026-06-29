@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="mb-3">
+  <a class="btn btn-primary btn-sm"
+     href="{{ url_for('report_builder', job_id=job.id) }}">
+    Build Report (CompanyCam/Encircle PDF + ZIP)
+  </a>
+</div>
+
 <h2>Job {{ job.job_number }} — {{ job.title }}</h2>
 <p>
   <strong>Client:</strong> {{ job.client_name or "N/A" }} |
