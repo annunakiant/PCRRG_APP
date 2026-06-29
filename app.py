@@ -856,7 +856,7 @@ pdf.save()
 
     # Add photos (full resolution)
     for p in photos:
-        rel = p.filename.replace("\\", "/").replace("\\", "/")
+        rel = p.filename.replace("\", "/").replace("\\", "/")
         abs_path = os.path.join(STATIC_DIR, rel)
         if os.path.exists(abs_path):
             with open(abs_path, "rb") as fimg:
