@@ -209,6 +209,7 @@ class ContractTemplate(db.Model):
 
 
 class JobContract(db.Model):
+
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=False)
     template_id = db.Column(db.Integer, db.ForeignKey('contract_template.id'))
@@ -380,6 +381,8 @@ def employee_clock_out():
 # -------------------------------------------------------------------------
 # ADMIN HOME + THEME + USERS + TABS
 # -------------------------------------------------------------------------
+
+
 @app.route('/admin')
 @login_required
 def admin_home():
@@ -403,6 +406,8 @@ def admin_home():
         task_templates=task_templates,
         active_sessions=active_sessions
     )
+
+
 
 
 @app.route('/admin/theme', methods=['POST'])
@@ -638,9 +643,13 @@ def view_job(job_id):
     tabs = CustomTab.query.order_by(CustomTab.order).all()
     tasks = job.tasks.order_by(JobTask.id).all()
 
+    # FIX: load checklist templates
+    task_templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name.asc()).all()
+
     values_map = {v.field_id: v.value for v in job.custom_values}
 
     return render_template(
+
         'view_job.html',
         job=job,
         photos=photos,
@@ -649,10 +658,218 @@ def view_job(job_id):
         templates=templates,
         tabs=tabs,
         values_map=values_map,
-        tasks=tasks
+        tasks=tasks,
+        task_templates=task_templates
     )
 
 
+@app.route('/jobs/<int:job_id>/report-builder')
+@login_required
+def report_builder(job_id):
+    job = Job.query.get_or_404(job_id)
+    return render_template(
+        'report_builder.html',
+        job=job,
+        JobPhoto=JobPhoto
+    )
+
+
+@app.route('/jobs/<int:job_id>/export/companycam', methods=['POST'])
+@login_required
+def export_job_companycam(job_id):
+    import io, os, csv, zipfile
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import landscape, letter
+
+    job = Job.query.get_or_404(job_id)
+    data = request.get_json() or {}
+    selected_ids = data.get("photos") or []
+    layout = int(data.get("layout") or 4)
+    metadata = data.get("metadata") or []
+
+    # Resolve photos
+    if selected_ids:
+        photos = JobPhoto.query.filter(JobPhoto.id.in_(selected_ids)).order_by(JobPhoto.uploaded_at.asc()).all()
+    else:
+        photos = job.photos.order_by(JobPhoto.uploaded_at.asc()).all()
+
+    packout_items = job.packout_items.order_by(PackoutItem.id.asc()).all()
+    contracts = job.contracts.order_by(JobContract.id.asc()).all()
+    tasks = job.tasks.order_by(JobTask.id.asc()).all()
+
+    # Prepare export directory
+    export_root = os.path.join(app.config['ARCHIVE_FOLDER'], 'companycam')
+    os.makedirs(export_root, exist_ok=True)
+    pdf_filename = f"job_{job.id}_companycam_report.pdf"
+    pdf_path = os.path.join(export_root, pdf_filename)
+
+    # Build PDF (landscape, Encircle-style summaries + CompanyCam-style grids)
+    pdf = canvas.Canvas(pdf_path, pagesize=landscape(letter))
+
+    # Page 1 — Job Summary
+    pdf.setFont("Helvetica-Bold", 20)
+    pdf.drawString(50, 550, f"Job Report — {job.job_number}")
+    pdf.setFont("Helvetica", 12)
+    pdf.drawString(50, 520, f"Title: {job.title}")
+    pdf.drawString(50, 500, f"Client: {job.client_name or ''}")
+    pdf.drawString(50, 480, f"Address: {job.address or ''}")
+    pdf.drawString(50, 460, f"Service: {job.service_type or ''}")
+    pdf.drawString(50, 440, f"Status: {job.status}")
+    pdf.showPage()
+
+    # Page 2 — Task Summary
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(50, 550, "Task Summary")
+    pdf.setFont("Helvetica", 11)
+    y = 520
+    for t in tasks:
+        status = "Done" if t.completed else "Pending"
+        pdf.drawString(50, y, f"{t.label} — {status}")
+        y -= 18
+        if y < 80:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(50, 550, "Task Summary (cont.)")
+            pdf.setFont("Helvetica", 11)
+            y = 520
+    pdf.showPage()
+
+    # Page 3 — Packout Summary
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(50, 550, "Packout Summary")
+    pdf.setFont("Helvetica", 11)
+    y = 520
+    for item in packout_items:
+        pdf.drawString(50, y, f"{item.name} x{item.quantity} @ {item.location or ''} ({item.condition or ''})")
+        y -= 18
+        if y < 80:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(50, 550, "Packout Summary (cont.)")
+            pdf.setFont("Helvetica", 11)
+            y = 520
+    pdf.showPage()
+
+    # Page 4 — Contracts Summary
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(50, 550, "Contracts Summary")
+    pdf.setFont("Helvetica", 11)
+    y = 520
+    for c in contracts:
+        status = "Signed" if c.signed else "Pending"
+        pdf.drawString(50, y, f"Template #{c.template_id} — {status} — {c.signer_name or ''}")
+        y -= 18
+        if y < 80:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(50, 550, "Contracts Summary (cont.)")
+            pdf.setFont("Helvetica", 11)
+            y = 520
+    pdf.showPage()
+
+    # Photo pages — CompanyCam-style grid (thumbnails)
+    per_row = max(2, min(layout, 4))
+    per_page = per_row * 2
+    index = 0
+    thumb_size = 150
+
+    while index < len(photos):
+        chunk = photos[index:index+per_page]
+        pdf.setFont("Helvetica-Bold", 16)
+        pdf.drawString(50, 550, "Photo Evidence")
+        x_start = 50
+        y_start = 500
+
+        for i, p in enumerate(chunk):
+            row = i // per_row
+            col = i % per_row
+            x = x_start + col * (thumb_size + 20)
+            y = y_start - row * (thumb_size + 60)
+
+            # Resolve absolute path from STATIC_DIR + relative filename
+            rel = p.filename.replace("\\", "/").replace("\\", "/")
+            abs_path = os.path.join(STATIC_DIR, rel)
+            try:
+                pdf.drawImage(abs_path, x, y, width=thumb_size, height=thumb_size, preserveAspectRatio=True, anchor='c')
+            except Exception:
+                pdf.setFont("Helvetica", 8)
+                pdf.drawString(x, y + thumb_size/2, "[Image missing]")
+
+            meta_y = y - 12
+            pdf.setFont("Helvetica", 8)
+            line = []
+            if "numbers" in metadata:
+                line.append(f"#{p.id}")
+            if "captured_by" in metadata and p.user_id:
+                line.append(f"User {p.user_id}")
+            if "location" in metadata and p.location_label:
+                line.append(p.location_label)
+            if "date" in metadata and p.uploaded_at:
+                line.append(p.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+            if "tags" in metadata and p.category:
+                line.append(p.category)
+            if line:
+                pdf.drawString(x, meta_y, " | ".join(line))
+
+        pdf.showPage()
+        index += per_page
+
+    pdf.save()
+
+    # Build ZIP package: PDF + full-res photos + packout CSV + contracts metadata
+    zip_buffer = io.BytesIO()
+    z = zipfile.ZipFile(zip_buffer, "w")
+
+    # Add PDF
+    with open(pdf_path, "rb") as fpdf:
+        z.writestr(pdf_filename, fpdf.read())
+
+    # Add photos (full resolution)
+    for p in photos:
+        rel = p.filename.replace("\\", "/").replace("\\", "/")
+        abs_path = os.path.join(STATIC_DIR, rel)
+        if os.path.exists(abs_path):
+            with open(abs_path, "rb") as fimg:
+                z.writestr(f"photos/{os.path.basename(rel)}", fimg.read())
+
+    # Add packout CSV
+    csv_io = io.StringIO()
+    writer = csv.writer(csv_io)
+    writer.writerow(["Name","Quantity","Location","Condition","Notes"])
+    for item in packout_items:
+        writer.writerow([
+            item.name,
+            item.quantity,
+            item.location or "",
+            item.condition or "",
+            item.notes or "",
+        ])
+    z.writestr("packout.csv", csv_io.getvalue())
+
+    # Add contracts metadata JSON
+    import json as _json
+    contracts_data = []
+    for c in contracts:
+        contracts_data.append({
+            "template_id": c.template_id,
+            "signed": bool(c.signed),
+            "signed_at": c.signed_at.isoformat() if c.signed_at else None,
+            "signer_name": c.signer_name,
+            "signer_email": c.signer_email,
+            "latitude": c.latitude,
+            "longitude": c.longitude,
+        })
+    z.writestr("contracts.json", _json.dumps(contracts_data, indent=2))
+
+    z.close()
+    zip_buffer.seek(0)
+
+    return send_file(
+        zip_buffer,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"job_{job.id}_companycam_report.zip"
+    )
 @app.route('/jobs/<int:job_id>/map-data')
 @login_required
 def job_map_data(job_id):
@@ -708,6 +925,29 @@ def new_job():
         )
         db.session.add(job)
         db.session.commit()
+
+        # AUTO‑ATTACH TASKS BASED ON JOB TYPE
+        templates = JobTaskTemplate.query.filter_by(service_type=job.service_type).all()
+        for tmpl in templates:
+            task = JobTask(
+                job_id=job.id,
+                template_id=tmpl.id,
+                label=tmpl.name
+            )
+            db.session.add(task)
+        db.session.commit()
+
+        # AUTO‑ATTACH TASKS BASED ON JOB TYPE
+        templates = JobTaskTemplate.query.filter_by(service_type=job.service_type).all()
+        for tmpl in templates:
+            task = JobTask(
+                job_id=job.id,
+                template_id=tmpl.id,
+                label=tmpl.name
+            )
+            db.session.add(task)
+        db.session.commit()
+
         flash('Job created.')
         return redirect(url_for('view_job', job_id=job.id))
 
@@ -757,6 +997,104 @@ def delete_job(job_id):
 # -------------------------------------------------------------------------
 # JOB TASK TEMPLATES + TASKS
 # -------------------------------------------------------------------------
+
+
+@app.route('/admin/checklists/import', methods=['GET', 'POST'])
+@login_required
+def import_checklist():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        file = request.files.get('file')
+        name = request.form.get('name') or 'Imported Checklist'
+        service_type = request.form.get('service_type')
+
+        if not file or file.filename == '':
+            flash('No file selected.')
+            return redirect(url_for('import_checklist'))
+
+        # Save uploaded file
+        import_dir = os.path.join(app.config['ARCHIVE_FOLDER'], 'imported_docs')
+        os.makedirs(import_dir, exist_ok=True)
+
+        filename = secure_filename(file.filename)
+        abs_path = os.path.join(import_dir, filename)
+        file.save(abs_path)
+
+        # Extract steps
+        steps = []
+        ext = filename.lower().split('.')[-1]
+
+        if ext == 'txt':
+            with open(abs_path, 'r', encoding='utf-8', errors='ignore') as ftxt:
+                steps = [line.strip() for line in ftxt if line.strip()]
+
+        elif ext == 'docx':
+            try:
+                from docx import Document
+                doc = Document(abs_path)
+                for p in doc.paragraphs:
+                    if p.text.strip():
+                        steps.append(p.text.strip())
+            except:
+                steps = []
+
+        elif ext == 'pdf':
+            try:
+                import PyPDF2
+                with open(abs_path, 'rb') as fpdf:
+                    reader = PyPDF2.PdfReader(fpdf)
+                    for page in reader.pages:
+                        text = page.extract_text() or ""
+                        for line in text.splitlines():
+                            if line.strip():
+                                steps.append(line.strip())
+            except:
+                steps = []
+
+        # Create template
+        tmpl = JobTaskTemplate(
+            name=name,
+            description=json.dumps(steps),
+            service_type=service_type
+        )
+        db.session.add(tmpl)
+        db.session.commit()
+
+        flash('Checklist imported successfully.')
+        return redirect(url_for('admin_checklists'))
+
+    return render_template('admin_checklist_import.html')
+
+
+@app.route('/admin/checklists', methods=['GET', 'POST'])
+@login_required
+def admin_checklists():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        steps_raw = request.form.get('steps') or ""
+        steps = [s.strip() for s in steps_raw.splitlines() if s.strip()]
+
+        tmpl = JobTaskTemplate(
+            name=name,
+            description=json.dumps(steps),
+            service_type=request.form.get('service_type')
+        )
+        db.session.add(tmpl)
+        db.session.commit()
+        flash('Checklist created.')
+        return redirect(url_for('admin_checklists'))
+
+    templates = JobTaskTemplate.query.order_by(JobTaskTemplate.name).all()
+    return render_template('admin_checklists.html', templates=templates)
+
+
 @app.route('/admin/task-templates', methods=['GET', 'POST'])
 @login_required
 def admin_task_templates():
@@ -782,6 +1120,32 @@ def admin_task_templates():
     return render_template('admin_task_templates.html', templates=templates)
 
 
+
+@app.route('/jobs/<int:job_id>/attach_checklist', methods=['POST'])
+@login_required
+def attach_checklist(job_id):
+    job = Job.query.get_or_404(job_id)
+    tmpl_id = int(request.form.get('template_id'))
+    tmpl = JobTaskTemplate.query.get_or_404(tmpl_id)
+
+    try:
+        steps = json.loads(tmpl.description or "[]")
+    except:
+        steps = []
+
+    for step in steps:
+        task = JobTask(
+            job_id=job.id,
+            template_id=tmpl.id,
+            label=step
+        )
+        db.session.add(task)
+
+    db.session.commit()
+    flash('Checklist attached.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
 @app.route('/jobs/<int:job_id>/tasks/add', methods=['POST'])
 @login_required
 def add_job_task(job_id):
@@ -801,6 +1165,18 @@ def add_job_task(job_id):
     db.session.add(task)
     db.session.commit()
     flash('Task added to job.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+
+@app.route('/jobs/<int:job_id>/tasks/<int:task_id>/delete', methods=['POST'])
+@login_required
+def delete_job_task(job_id, task_id):
+    job = Job.query.get_or_404(job_id)
+    task = JobTask.query.get_or_404(task_id)
+    db.session.delete(task)
+    db.session.commit()
+    flash('Task deleted.')
     return redirect(url_for('view_job', job_id=job.id))
 
 
@@ -993,6 +1369,18 @@ def inventory_delete(item_id):
 # -------------------------------------------------------------------------
 # CONTRACTS + E-SIGN
 # -------------------------------------------------------------------------
+
+@app.route('/contracts/<int:contract_id>/view')
+@login_required
+def view_contract_doc(contract_id):
+    contract = JobContract.query.get_or_404(contract_id)
+    tmpl = contract.template
+    if not tmpl or not tmpl.filename:
+        flash('No contract file available.')
+        return redirect(url_for('view_job', job_id=contract.job_id))
+    return send_from_directory(CONTRACTS_FOLDER, tmpl.filename, as_attachment=False)
+
+
 @app.route('/contracts/templates', methods=['GET', 'POST'])
 @login_required
 def manage_contracts():
@@ -1030,6 +1418,7 @@ def attach_contract(job_id):
 
 
 @app.route('/jobs/<int:job_id>/contracts/<int:contract_id>/sign', methods=['GET', 'POST'])
+
 def sign_contract(job_id, contract_id):
     job = Job.query.get_or_404(job_id)
     jc = JobContract.query.get_or_404(contract_id)
@@ -1037,7 +1426,6 @@ def sign_contract(job_id, contract_id):
     if request.method == 'POST':
         signer_name = request.form.get('signer_name')
         signer_email = request.form.get('signer_email')
-
         jc.signed = True
         jc.signed_at = datetime.utcnow()
         jc.signer_name = signer_name
@@ -1045,15 +1433,35 @@ def sign_contract(job_id, contract_id):
 
         signer_lat = request.form.get('lat')
         signer_lon = request.form.get('lon')
-
         jc.latitude = float(signer_lat) if signer_lat else None
         jc.longitude = float(signer_lon) if signer_lon else None
+
+        sig_data = request.form.get('signature_data')
+        try:
+            if sig_data and ',' in sig_data:
+                import base64
+                sig_bytes = base64.b64decode(sig_data.split(',')[1])
+                # Ensure folder exists; if config missing, fall back to /static/contracts
+                upload_root = getattr(app.config, 'UPLOAD_FOLDER_CONTRACTS', os.path.join(STATIC_DIR, 'uploads', 'contracts'))
+                os.makedirs(upload_root, exist_ok=True)
+                sig_filename = f"signature_{job.id}_{contract_id}_{int(datetime.utcnow().timestamp())}.png"
+                sig_path = os.path.join(upload_root, sig_filename)
+                with open(sig_path, 'wb') as sig_file:
+                    sig_file.write(sig_bytes)
+                # Only assign if model has this attribute
+                if hasattr(jc, 'signature_file'):
+                    jc.signature_file = sig_filename
+        except Exception as e:
+            # Do not crash the app; just log and continue
+            app.logger.error(f"Signature save failed: {e}")
 
         db.session.commit()
         flash('Contract signed.')
         return redirect(url_for('view_job', job_id=job.id))
 
     return render_template('sign_contract.html', job=job, contract=jc)
+
+
 
 # -------------------------------------------------------------------------
 # SHARE + ARCHIVE
@@ -1093,7 +1501,7 @@ def share_job(job_id):
         status = "Signed" if c.signed else "Pending"
         body_lines.append(f"- Template #{c.template_id} [{status}]")
 
-    body = "\n".join(body_lines)
+    body = "\\n".join(body_lines)
     send_job_email(job, to_email, f"Job report: {job.job_number}", body)
     flash('Job report emailed (if email is configured).')
     return redirect(url_for('view_job', job_id=job.id))
@@ -1243,6 +1651,40 @@ if __name__ == '__main__':
 # -------------------------------------------------------------------------
 # JOB REPORT PDF
 # -------------------------------------------------------------------------
+
+@app.route('/jobs/<int:job_id>/export/zip')
+@login_required
+def export_job_zip(job_id):
+    job = Job.query.get_or_404(job_id)
+    from export_zip import build_zip_package
+
+    export_dir = os.path.join(app.config['ARCHIVE_FOLDER'], 'exports')
+    os.makedirs(export_dir, exist_ok=True)
+
+    filename = f"job_{job.id}_package.zip"
+    path = os.path.join(export_dir, filename)
+
+    build_zip_package(job, path)
+
+    return send_from_directory(export_dir, filename, as_attachment=True)
+
+@app.route('/jobs/<int:job_id>/export/pdf')
+@login_required
+def export_job_pdf(job_id):
+    job = Job.query.get_or_404(job_id)
+    from export_pdf import build_full_pdf
+
+    export_dir = os.path.join(app.config['ARCHIVE_FOLDER'], 'exports')
+    os.makedirs(export_dir, exist_ok=True)
+
+    filename = f"job_{job.id}_full_report.pdf"
+    path = os.path.join(export_dir, filename)
+
+    build_full_pdf(job, path)
+
+    return send_from_directory(export_dir, filename, as_attachment=True)
+
+
 @app.route('/jobs/<int:job_id>/report.pdf')
 @login_required
 def job_report_pdf(job_id):
@@ -1254,3 +1696,253 @@ def job_report_pdf(job_id):
     path = os.path.join(reports_dir, filename)
     generate_job_pdf(job, path)
     return send_from_directory(reports_dir, filename, as_attachment=True)
+
+
+@app.route('/jobs/<int:job_id>/attach-checklist', methods=['POST'])
+@login_required
+def attach_checklist_to_job(job_id):
+    job = Job.query.get_or_404(job_id)
+    checklist_id = request.form.get('checklist_id')
+    tmpl = JobTaskTemplate.query.get_or_404(checklist_id)
+
+    import json
+    steps = []
+    try:
+        steps = json.loads(tmpl.description or "[]")
+    except:
+        steps = []
+
+    for s in steps:
+        if not s.strip():
+            continue
+        task = JobTask(
+            job_id=job.id,
+            description=s.strip(),
+            completed=False
+        )
+        db.session.add(task)
+
+    db.session.commit()
+    flash('Checklist attached to job.')
+    return redirect(url_for('view_job', job_id=job.id))
+
+
+# ------------------------------------------------------------
+# ADMIN: CREATE NEW CHECKLIST TEMPLATE
+# ------------------------------------------------------------
+@app.route('/admin/checklists/new', methods=['GET', 'POST'])
+@login_required
+def admin_checklist_new():
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    # Create empty template object for the form
+    tmpl = JobTaskTemplate(name='', service_type='', description='[]')
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        service_type = request.form.get('service_type')
+        steps = request.form.getlist('steps[]')
+
+        tmpl = JobTaskTemplate(
+            name=name,
+            service_type=service_type,
+            description=json.dumps([s.strip() for s in steps if s.strip()])
+        )
+        db.session.add(tmpl)
+        db.session.commit()
+        flash('Checklist template created.')
+        return redirect(url_for('admin_checklists'))
+
+    return render_template('admin_checklist_edit.html', tmpl=tmpl, steps=[])
+
+
+# ------------------------------------------------------------
+# ADMIN: EDIT CHECKLIST TEMPLATE
+# ------------------------------------------------------------
+@app.route('/admin/checklists/<int:checklist_id>/edit', methods=['GET', 'POST'])
+@login_required
+def admin_checklist_edit(checklist_id):
+    if not is_admin():
+        flash('Admins only.')
+        return redirect(url_for('dashboard'))
+
+    tmpl = JobTaskTemplate.query.get_or_404(checklist_id)
+
+    import json
+    try:
+        steps = json.loads(tmpl.description or "[]")
+    except:
+        steps = []
+
+    if request.method == 'POST':
+        tmpl.name = request.form.get('name')
+        tmpl.service_type = request.form.get('service_type')
+        new_steps = request.form.getlist('steps[]')
+        tmpl.description = json.dumps([s.strip() for s in new_steps if s.strip()])
+        db.session.commit()
+        flash('Checklist updated.')
+        return redirect(url_for('admin_checklists'))
+
+    return render_template('admin_checklist_edit.html', tmpl=tmpl, steps=steps)
+
+
+# ---------------------------------------------------------
+# FIX: Missing delete_photo route (causing BuildError)
+# ---------------------------------------------------------
+@app.route('/jobs/<int:job_id>/photo/<int:photo_id>/delete', methods=['POST'])
+@login_required
+def delete_photo(job_id, photo_id):
+    photo = JobPhoto.query.get_or_404(photo_id)
+    db.session.delete(photo)
+    db.session.commit()
+    flash('Photo deleted.')
+    return redirect(url_for('view_job', job_id=job_id))
+
+# =========================
+# RBAC + PWA BLOCK 1
+# =========================
+from functools import wraps
+
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False)
+    description = db.Column(db.String(255))
+
+class Permission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False)
+
+class RolePermission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey("role.id"), nullable=False)
+    permission_id = db.Column(db.Integer, db.ForeignKey("permission.id"), nullable=False)
+    role = db.relationship("Role", backref=db.backref("role_permissions", lazy="dynamic", cascade="all, delete-orphan"))
+    permission = db.relationship("Permission", backref=db.backref("permission_roles", lazy="dynamic", cascade="all, delete-orphan"))
+
+class UserRole(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    role_id = db.Column(db.Integer, db.ForeignKey("role.id"), nullable=False)
+    user = db.relationship("User", backref=db.backref("user_roles", lazy="dynamic", cascade="all, delete-orphan"))
+    role = db.relationship("Role", backref=db.backref("users", lazy="dynamic", cascade="all, delete-orphan"))
+
+BASE_PERMISSIONS = [
+    "view_jobs", "edit_jobs", "delete_jobs", "upload_photos", "delete_photos",
+    "manage_inventory", "manage_users", "manage_roles", "approve_contracts",
+    "edit_contracts", "edit_tasks", "clock_in_out_edit"
+]
+
+def bootstrap_permissions():
+    for name in BASE_PERMISSIONS:
+        if not Permission.query.filter_by(name=name).first():
+            db.session.add(Permission(name=name))
+    db.session.commit()
+
+def user_has_permission(perm_name):
+    if not current_user.is_authenticated:
+        return False
+    if getattr(current_user, "role", "") == "admin":
+        return True
+    perm = Permission.query.filter_by(name=perm_name).first()
+    if not perm:
+        return False
+    for ur in current_user.user_roles:
+        for rp in ur.role.role_permissions:
+            if rp.permission_id == perm.id:
+                return True
+    return False
+
+def permission_required(perm_name):
+    def decorator(f):
+        @wraps(f)
+        @login_required
+        def wrapped(*args, **kwargs):
+            if not user_has_permission(perm_name):
+                flash("Permission denied.")
+                return redirect(url_for("dashboard"))
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
+
+@app.context_processor
+def inject_globals():
+    theme = ThemeSettings.query.first()
+    return {
+        "is_admin": is_admin(),
+        "current_user": current_user,
+        "theme": theme,
+        "user_has_permission": user_has_permission,
+    }
+
+@app.route("/admin/rbac/bootstrap", methods=["POST"])
+@login_required
+def admin_rbac_bootstrap():
+    if not is_admin():
+        flash("Admins only.")
+        return redirect(url_for("dashboard"))
+    bootstrap_permissions()
+    flash("RBAC base permissions initialized.")
+    return redirect(url_for("admin_home"))
+
+@app.route("/admin/roles", methods=["GET", "POST"])
+@login_required
+def admin_roles():
+    if not is_admin():
+        flash("Admins only.")
+        return redirect(url_for("dashboard"))
+    if request.method == "POST":
+        name = request.form.get("name")
+        description = request.form.get("description")
+        if not name:
+            flash("Role name is required.")
+            return redirect(url_for("admin_roles"))
+        if Role.query.count() >= 3:
+            flash("Maximum of 3 roles reached.")
+            return redirect(url_for("admin_roles"))
+        if Role.query.filter_by(name=name).first():
+            flash("Role name already exists.")
+            return redirect(url_for("admin_roles"))
+        db.session.add(Role(name=name, description=description))
+        db.session.commit()
+        flash("Role created.")
+        return redirect(url_for("admin_roles"))
+    roles = Role.query.order_by(Role.name).all()
+    permissions = Permission.query.order_by(Permission.name).all()
+    return render_template("admin_roles.html", roles=roles, permissions=permissions)
+
+@app.route("/admin/roles/<int:role_id>/permissions", methods=["POST"])
+@login_required
+def admin_roles_permissions(role_id):
+    if not is_admin():
+        flash("Admins only.")
+        return redirect(url_for("dashboard"))
+    role = Role.query.get_or_404(role_id)
+    RolePermission.query.filter_by(role_id=role.id).delete()
+    selected = request.form.getlist("permissions")
+    for pname in selected:
+        perm = Permission.query.filter_by(name=pname).first()
+        if perm:
+            db.session.add(RolePermission(role_id=role.id, permission_id=perm.id))
+    db.session.commit()
+    flash("Role permissions updated.")
+    return redirect(url_for("admin_roles"))
+
+@app.route("/admin/users/<int:user_id>/roles", methods=["POST"])
+@login_required
+def admin_users_assign_roles(user_id):
+    if not is_admin():
+        flash("Admins only.")
+        return redirect(url_for("dashboard"))
+    user = User.query.get_or_404(user_id)
+    UserRole.query.filter_by(user_id=user.id).delete()
+    selected_role_ids = request.form.getlist("roles")
+    for rid in selected_role_ids:
+        role = Role.query.get(int(rid))
+        if role:
+            db.session.add(UserRole(user_id=user.id, role_id=role.id))
+    db.session.commit()
+    flash("User roles updated.")
+    return redirect(url_for("admin_users"))
+
