@@ -2065,7 +2065,7 @@ def export_job_companycam_v2(job_id):
             x = 50 + col * (thumb_w + padding_x)
             y = 500 - row * (thumb_h + padding_y)
 
-            rel = p.filename.replace("\", "/")
+            rel = p.filename.replace("\\", "/")
             abs_path = os.path.join(STATIC_DIR, rel)
             try:
                 pdf.drawImage(abs_path, x, y, width=thumb_w, height=thumb_h, preserveAspectRatio=True)
