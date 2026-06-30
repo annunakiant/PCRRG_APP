@@ -2101,7 +2101,7 @@ def export_job_companycam_v2(job_id):
         z.writestr(pdf_filename, fpdf.read())
 
     for p in photos:
-        rel = p.filename.replace("\", "/")
+        rel = p.filename.replace("\\", "/")
         abs_path = os.path.join(STATIC_DIR, rel)
         if os.path.exists(abs_path):
             z.write(abs_path, arcname=os.path.join("photos", os.path.basename(abs_path)))
