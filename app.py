@@ -35,7 +35,6 @@ PHOTOS_FOLDER = os.path.join(UPLOAD_ROOT, 'photos')
 PACKOUT_FOLDER = os.path.join(UPLOAD_ROOT, 'packouts')
 CONTRACTS_FOLDER = os.path.join(UPLOAD_ROOT, 'contracts')
 ARCHIVE_FOLDER = os.path.join(data_dir, 'archive')
-
 for p in (UPLOAD_ROOT, PHOTOS_FOLDER, PACKOUT_FOLDER, CONTRACTS_FOLDER, ARCHIVE_FOLDER):
     os.makedirs(p, exist_ok=True)
 
