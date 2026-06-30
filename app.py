@@ -1946,3 +1946,191 @@ def admin_users_assign_roles(user_id):
     flash("User roles updated.")
     return redirect(url_for("admin_users"))
 
+
+
+
+@app.route('/jobs/<int:job_id>/export/companycam_v2', methods=['POST'])
+@login_required
+def export_job_companycam_v2(job_id):
+    import io, os, csv, zipfile
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import landscape, letter
+
+    job = Job.query.get_or_404(job_id)
+    data = request.get_json() or {}
+    selected_ids = data.get("photos") or []
+    layout = int(data.get("layout") or 4)
+    metadata = data.get("metadata") or []
+
+    if selected_ids:
+        photos = JobPhoto.query.filter(JobPhoto.id.in_(selected_ids)).order_by(JobPhoto.uploaded_at.asc()).all()
+    else:
+        photos = job.photos.order_by(JobPhoto.uploaded_at.asc()).all()
+
+    packout_items = job.packout_items.order_by(PackoutItem.id.asc()).all()
+    contracts = job.contracts.order_by(JobContract.id.asc()).all()
+    tasks = job.tasks.order_by(JobTask.id.asc()).all()
+
+    export_root = os.path.join(app.config['ARCHIVE_FOLDER'], 'companycam_v2')
+    os.makedirs(export_root, exist_ok=True)
+    pdf_filename = f"job_{job.id}_companycam_v2.pdf"
+    pdf_path = os.path.join(export_root, pdf_filename)
+
+    pdf = canvas.Canvas(pdf_path, pagesize=landscape(letter))
+
+    try:
+        logo_path = os.path.join(STATIC_DIR, "logo.png")
+        pdf.drawImage(logo_path, 40, 450, width=120, height=120, preserveAspectRatio=True)
+    except:
+        pass
+
+    pdf.setFont("Helvetica-Bold", 24)
+    pdf.drawString(180, 520, "Professional Cleaning Restoration & Rehab Services Group")
+
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(180, 495, f"Job Report — {job.job_number}")
+
+    pdf.setFont("Helvetica", 12)
+    pdf.drawString(50, 450, f"Title: {job.title}")
+    pdf.drawString(50, 430, f"Client: {job.client_name or ''}")
+    pdf.drawString(50, 410, f"Address: {job.address or ''}")
+    pdf.drawString(50, 390, f"Service: {job.service_type or ''}")
+    pdf.drawString(50, 370, f"Status: {job.status}")
+    pdf.drawString(50, 350, f"Created: {job.created_at.strftime('%Y-%m-%d %H:%M')}")
+    pdf.showPage()
+
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(50, 550, "Task Summary")
+    pdf.setFont("Helvetica", 11)
+    y = 520
+    for t in tasks:
+        status = "Done" if t.completed else "Pending"
+        pdf.drawString(50, y, f"{t.label} — {status}")
+        y -= 18
+        if y < 80:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(50, 550, "Task Summary (cont.)")
+            pdf.setFont("Helvetica", 11)
+            y = 520
+    pdf.showPage()
+
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(50, 550, "Packout Summary")
+    pdf.setFont("Helvetica", 11)
+    y = 520
+    for item in packout_items:
+        pdf.drawString(50, y, f"{item.name} x{item.quantity} @ {item.location or ''} ({item.condition or ''})")
+        y -= 18
+        if y < 80:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(50, 550, "Packout Summary (cont.)")
+            pdf.setFont("Helvetica", 11)
+            y = 520
+    pdf.showPage()
+
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(50, 550, "Contracts Summary")
+    pdf.setFont("Helvetica", 11)
+    y = 520
+    for c in contracts:
+        status = "Signed" if c.signed else "Pending"
+        pdf.drawString(50, y, f"Template #{c.template_id} — {status} — {c.signer_name or ''}")
+        y -= 18
+        if y < 80:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(50, 550, "Contracts Summary (cont.)")
+            pdf.setFont("Helvetica", 11)
+            y = 520
+    pdf.showPage()
+
+    per_row = max(2, min(layout, 4))
+    per_page = per_row * 2
+    thumb_w = 260
+    thumb_h = 180
+    padding_x = 40
+    padding_y = 40
+
+    index = 0
+    while index < len(photos):
+        chunk = photos[index:index + per_page]
+        pdf.setFont("Helvetica-Bold", 18)
+        pdf.drawString(50, 550, "Photo Evidence")
+
+        for i, p in enumerate(chunk):
+            row = i // per_row
+            col = i % per_row
+            x = 50 + col * (thumb_w + padding_x)
+            y = 500 - row * (thumb_h + padding_y)
+
+            rel = p.filename.replace("\", "/")
+            abs_path = os.path.join(STATIC_DIR, rel)
+            try:
+                pdf.drawImage(abs_path, x, y, width=thumb_w, height=thumb_h, preserveAspectRatio=True)
+            except:
+                pdf.setFont("Helvetica", 10)
+                pdf.drawString(x, y + thumb_h / 2, "[Image missing]")
+
+            meta_y = y - 14
+            pdf.setFont("Helvetica", 10)
+            meta = []
+            if "numbers" in metadata:
+                meta.append(f"#{p.id}")
+            if "captured_by" in metadata and p.user_id:
+                meta.append(f"Tech {p.user_id}")
+            if "location" in metadata and p.location_label:
+                meta.append(p.location_label)
+            if "date" in metadata and p.uploaded_at:
+                meta.append(p.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+            if "tags" in metadata and p.category:
+                meta.append(p.category)
+            if meta:
+                pdf.drawString(x, meta_y, " | ".join(meta))
+
+        pdf.showPage()
+        index += per_page
+
+    pdf.save()
+
+    zip_buffer = io.BytesIO()
+    z = zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED)
+
+    with open(pdf_path, "rb") as fpdf:
+        z.writestr(pdf_filename, fpdf.read())
+
+    for p in photos:
+        rel = p.filename.replace("\", "/")
+        abs_path = os.path.join(STATIC_DIR, rel)
+        if os.path.exists(abs_path):
+            z.write(abs_path, arcname=os.path.join("photos", os.path.basename(abs_path)))
+
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer)
+    writer.writerow(["Name", "Quantity", "Location", "Condition", "Notes"])
+    for item in packout_items:
+        writer.writerow([item.name, item.quantity, item.location or "", item.condition or "", item.notes or ""])
+    z.writestr(f"job_{job.id}_packout.csv", csv_buffer.getvalue())
+
+    contracts_payload = []
+    for c in contracts:
+        contracts_payload.append({
+            "template_id": c.template_id,
+            "signed": bool(c.signed),
+            "signed_at": c.signed_at.isoformat() if c.signed_at else None,
+            "signer_name": c.signer_name,
+            "signer_email": c.signer_email,
+        })
+    z.writestr(f"job_{job.id}_contracts.json", json.dumps(contracts_payload, indent=2))
+
+    z.close()
+    zip_buffer.seek(0)
+
+    zip_name = f"job_{job.id}_companycam_v2.zip"
+    return send_file(
+        zip_buffer,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=zip_name
+    )
