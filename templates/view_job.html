@@ -1,524 +1,345 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="mb-3">
-  <a class="btn btn-primary btn-sm"
-     href="{{ url_for('report_builder', job_id=job.id) }}">
-    Build Report (CompanyCam/Encircle PDF + ZIP)
-  </a>
-</div>
-
-<h2>Job {{ job.job_number }} — {{ job.title }}</h2>
-<p>
-  <strong>Client:</strong> {{ job.client_name or "N/A" }} |
-  <strong>Address:</strong> {{ job.address or "N/A" }} |
-  <strong>Status:</strong> {{ job.status }}
-</p>
-
-{% if is_admin %}
-<div class="mb-2">
-  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_job', job_id=job.id) }}">Edit Job</a>
-  <form method="post" action="{{ url_for('delete_job', job_id=job.id) }}" style="display:inline;">
-    <button class="btn btn-sm btn-outline-danger">Delete Job</button>
-  </form>
-</div>
-{% endif %}
-
-<!-- PHOTOS -->
-  <section class="cc-card">
-  <h3>Room Photos</h3>
-  
-  <div id="camera-capture" 
-       data-job-id="{{ job.id }}" 
-       data-username="{{ current_user.name or current_user.username }}"
-       data-upload-url="{{ url_for('upload_photo', job_id=job.id) }}">
-  </div>
-
-  <div class="mt-4">
-    <h4>Saved Photos</h4>
-<select id="photo-category" class="form-control mb-2" style="max-width:240px;">
-  <option value="">Uncategorized</option>
-  <option value="Before">Before</option>
-  <option value="During">During</option>
-  <option value="After">After</option>
-  <option value="Damaged">Damaged</option>
-  <option value="Equipment">Equipment</option>
-  <option value="Setup">Setup</option>
-  <option value="Service">Service</option>
-  <option value="Cleanup">Cleanup</option>
-</select>
-
-    {% if photos %}
-{% set grouped = {} %}
-{% for p in photos %}
-  {% set cat = p.category or 'Uncategorized' %}
-  {% if grouped.get(cat) is none %}
-    {% set _ = grouped.update({cat: []}) %}
-  {% endif %}
-  {% set _ = grouped[cat].append(p) %}
-{% endfor %}
-
-<h3>Photos by Category</h3>
-{% for cat, plist in grouped.items() %}
-  <div class="cc-card mb-3" style="padding:10px;">
-    <div class="d-flex justify-content-between align-items-center">
-      <strong>{{ cat }}</strong>
-      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="this.parentElement.nextElementSibling.classList.toggle('d-none')">Toggle</button>
-    </div>
-    <div class="mt-2 d-none">
-      {% for p in plist %}
-        <div style="background:#1a1b1d;padding:8px;border-radius:6px;border:1px solid #2a2b2e;width:180px;margin-bottom:10px;">
-          <div style="font-weight:600;">{{ p.category or p.location_label or 'Room' }}</div>
-          <img src="/static/{{ p.filename }}" style="width:100%;border-radius:4px;margin-top:6px;">
-          <div style="font-size:12px;color:#666;margin-top:6px;">
-            {{ p.uploaded_at.strftime('%Y-%m-%d %H:%M') if p.uploaded_at else '' }}
-          </div>
-          {% if is_admin %}
-          <form method="post" action="{{ url_for('delete_photo', photo_id=p.id, job_id=job.id) }}">
-            <button class="btn btn-sm btn-outline-danger mt-1">Delete</button>
-          </form>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-{% endfor %}
-
-<!-- ORIGINAL PHOTO LOOP BELOW (hidden for safety) -->
-<div style="display:none;">
-
-      <div style="display:flex;flex-wrap:wrap;gap:12px;">
-        {% for p in photos %}
-        <div style="background:#1a1b1d;padding:8px;border-radius:6px;border:1px solid #2a2b2e;width:180px;">
-          <div style="font-weight:600;">
-            {{ p.category or p.location_label or 'Room' }}
-          </div>
-          <img src="/static/{{ p.filename }}" style="width:100%;border-radius:4px;margin-top:6px;">
-          <div style="font-size:12px;color:#666;margin-top:6px;">
-            {{ p.uploaded_at.strftime('%Y-%m-%d %H:%M') if p.uploaded_at else '' }}
-          </div>
-          {% if is_admin %}
-          <form method="post" action="{{ url_for('delete_photo', photo_id=p.id, job_id=job.id) }}">
-            <button class="btn btn-sm btn-outline-danger mt-1">Delete</button>
-          </form>
-          {% endif %}
-        </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p>No photos yet.</p>
-    {% endif %}
-  </div>
-</section>
-
-<!-- PACKOUTS -->
-<section class="cc-card">
-  <h3>Packout Items</h3>
-
-  <form id="packout-form" method="post" action="{{ url_for('add_packout_item', job_id=job.id) }}" enctype="multipart/form-data">
-    <div class="mb-2"><label>Name</label><input class="form-control" name="name" required></div>
-    <div class="mb-2"><label>Location</label><input class="form-control" name="location"></div>
-    <div class="mb-2"><label>Quantity</label><input class="form-control" type="number" name="quantity" value="1"></div>
-    <div class="mb-2"><label>Condition</label><input class="form-control" name="condition"></div>
-    <div class="mb-2"><label>Notes</label><textarea class="form-control" name="notes"></textarea></div>
+{% block title %}{{ job.job_number }} - PCRRG{% endblock %}
+{% block extra_head %}
+<style>
+    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+    .photo-card { position: relative; border-radius: 8px; overflow: hidden; background: #000; aspect-ratio: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .photo-card img { width: 100%; height: 100%; object-fit: cover; opacity: 0.95; transition: opacity 0.2s; }
+    .photo-card:hover img { opacity: 1; }
+    .photo-meta { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.85)); color: white; padding: 25px 8px 6px; font-size: 0.7rem; line-height: 1.2; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); pointer-events: none;}
     
-    <div class="mb-3" style="background:#020617; padding:10px; border-radius:8px; border:1px solid #374151;">
-      <label class="text-muted small mb-2">Packout Photos (Continuous Snap)</label>
-      <button id="packout-cam-start" class="btn btn-outline-primary w-100">Open Packout Camera</button>
-      <video id="packout-video" style="display:none; width:100%; max-height:300px; border-radius:8px; margin-top:10px; background:#000;" playsinline></video>
-      <button id="packout-cam-snap" class="btn btn-primary w-100 mt-2" style="display:none;">Snap Photo to Item</button>
-      <div id="packout-gallery" class="mt-2" style="display:flex; gap:10px; overflow-x:auto;"></div>
-    </div>
-
-    <button type="submit" id="packout-submit-btn" class="btn btn-success w-100">Save Item & Upload Photos</button>
-  </form>
-
-
-  <div class="mt-3">
-    {% if packout_items %}
-      {% for item in packout_items %}
-      <div class="cc-card">
-        <h5>{{ item.name }} (x{{ item.quantity }})</h5>
-        <p><strong>Location:</strong> {{ item.location or 'N/A' }} |
-           <strong>Condition:</strong> {{ item.condition or 'N/A' }}</p>
-        <p>{{ item.notes }}</p>
-
-        {% if item.photos.count() > 0 %}
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          {% for ph in item.photos %}
-          <img src="/static/{{ ph.filename }}" style="max-height:120px;border-radius:4px;">
-          {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if is_admin %}
-        <form method="post" action="{{ url_for('delete_packout_item', job_id=job.id, item_id=item.id) }}">
-          <button class="btn btn-sm btn-outline-danger mt-1">Delete Item</button>
-        </form>
-        {% endif %}
-      </div>
-      {% endfor %}
-    {% else %}
-      <p>No packout items yet.</p>
-    {% endif %}
-  </div>
-</section>
-
-<!-- CONTRACTS -->
-<section class="cc-card">
-  <h3>Contracts</h3>
-
-  <form method="post" action="{{ url_for('attach_contract', job_id=job.id) }}" class="mb-2">
-    <div class="row g-2">
-      <div class="col-md-6">
-        <select class="form-select" name="template_id" required>
-          <option value="">Select template...</option>
-          {% for t in templates %}
-          <option value="{{ t.id }}">{{ t.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
-        <button class="btn btn-primary btn-sm w-100">Attach</button>
-      </div>
-    </div>
-  </form>
-
-  <ul class="list-unstyled">
-    {% for c in contracts %}
-    <li class="mb-1">
-      Template #{{ c.template_id }} — {{ 'Signed' if c.signed else 'Pending' }}
-
-      <a class="btn btn-sm btn-outline-primary"
-         href="{{ url_for('view_contract_doc', contract_id=c.id) }}">
-        View
-      </a>
-
-      {% if not c.signed %}
-      <a class="btn btn-sm btn-success"
-         href="{{ url_for('sign_contract', job_id=job.id, contract_id=c.id) }}">
-        Sign
-      </a>
-      {% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-</section>
-
-
-<!-- CHECKLIST ATTACH -->
-<section class="cc-card">
-  <h3>Attach Checklist</h3>
-  <form method="post" action="{{ url_for('attach_checklist', job_id=job.id) }}" class="mb-2">
-    <div class="row g-2">
-      <div class="col-md-8">
-        <select class="form-select" name="template_id" required>
-          <option value="">Select checklist...</option>
-          {% for t in task_templates %}
-            {% if t.description %}
-              <option value="{{ t.id }}">{{ t.name }}</option>
-            {% endif %}
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-4">
-        <button class="btn btn-primary btn-sm w-100">Attach Checklist</button>
-      </div>
-    </div>
-  </form>
-</section>
-
-
-<!-- TASKS -->
-<section class="cc-card">
-  <h3>Tasks
-
-<div class="mb-3">
-  <label><strong>
-</div>
-
-
-<div class="mb-3">
-  <label><strong>
-</div>
-
-
-<div class="mb-3">
-  
-</h3>
-
-<div class="mb-3">
-  
-
-
-<div class="mb-3">
-  
-
-
-<div class="mb-3">
-  
-
-
-  <form method="post" action="{{ url_for('add_job_task', job_id=job.id) }}" class="mb-2">
-    <div class="row g-2">
-      <div class="col-md-4">
-        <select class="form-select" name="template_id">
-          <option value="">Custom</option>
-          {% for t in task_templates %}
-          <option value="{{ t.id }}">{{ t.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-4">
-        <input class="form-control" type="text" name="label" placeholder="Task label">
-      </div>
-      <div class="col-md-4">
-        <button class="btn btn-primary btn-sm w-100">Add Task</button>
-      </div>
-    </div>
-  </form>
-
-  <ul class="list-unstyled">
-    {% for t in tasks %}
-    <li class="mb-1">
-      {% if t.template %}
-        <strong>{{ t.template.name }}</strong> — 
-      {% endif %}
-      {{ t.label }} — {{ 'Done' if t.completed else 'Pending' }}
-
-      <form method="post"
-            action="{{ url_for('toggle_job_task', job_id=job.id, task_id=t.id) }}"
-            style="display:inline;">
-        <button class="btn btn-sm btn-outline-secondary">
-          Toggle
-        </button>
-      </form>
-
-      <form method="post"
-            action="{{ url_for('delete_job_task', job_id=job.id, task_id=t.id) }}"
-            style="display:inline;margin-left:6px;">
-        <button class="btn btn-sm btn-outline-danger">
-          Delete
-        </button>
-      </form>
-    </li>
-    {% endfor %}
-  </ul>
-</section>
-
-
-<section class="cc-card">
-  <h3>Export</h3>
-  <a class="btn btn-primary btn-sm"
-     href="{{ url_for('export_job_pdf', job_id=job.id) }}">
-     Download Full PDF Report</a>
-  
-  <a class="btn btn-secondary btn-sm"
-     href="{{ url_for('export_job_zip', job_id=job.id) }}">
-     Download Full ZIP Package
-  </a>
-
-  </a>
-</section>
-
-
-<!-- SHARE -->
-<section class="cc-card">
-  <h3>Share Job</h3>
-  <form method="post" action="{{ url_for('share_job', job_id=job.id) }}">
-    <div class="mb-2">
-      <label>Email</label>
-      <input class="form-control" type="email" name="email" required>
-    </div>
-    <button class="btn btn-primary">Send Report</button>
-  </form>
-</section>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
+    .nav-pills { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; border-bottom: 1px solid #dee2e6; }
+    .nav-pills::-webkit-scrollbar { display: none; }
+    .nav-pills .nav-link { color: #6c757d; font-weight: 600; border-radius: 0; border-bottom: 3px solid transparent; padding: 10px 15px; white-space: nowrap; }
+    .nav-pills .nav-link.active { background-color: transparent; color: var(--pcrrg-primary); border-bottom: 3px solid var(--pcrrg-primary); }
     
-    // --- UTILITY: GPS TRACKING ---
-    let currentGps = { lat: null, lon: null };
-    if(navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-            currentGps.lat = pos.coords.latitude;
-            currentGps.lon = pos.coords.longitude;
-        });
-    }
-
-    // ==========================================
-    // ENGINE 1: MAIN ROOM PHOTOS
-    // ==========================================
-    const roomContainer = document.getElementById('camera-capture');
-    if(roomContainer) {
-        const uploadUrl = roomContainer.getAttribute('data-upload-url');
-        const username = roomContainer.getAttribute('data-username') || 'Tech';
-        
-        // Build UI inside the blank space
-        roomContainer.innerHTML = `
-            <div class="d-flex gap-2 mb-2">
-                <select id="room-category" class="form-select">
-    <option value="Before">Before</option>
-    <option value="During">During</option>
-    <option value="After">After</option>
-    <option value="Damaged">Damaged</option>
-    <option value="Equipment">Equipment</option>
-    <option value="Setup">Setup</option>
-    <option value="Service">Service</option>
-    <option value="Cleanup">Cleanup</option>
-                    <option value="Before">Before</option>
-                    <option value="During">During</option>
-                    <option value="After">After</option>
-                    <option value="Damage">Damage</option>
-                </select>
-            </div>
-            <button id="room-cam-start" class="btn btn-outline-primary w-100">Open Room Camera</button>
-            <video id="room-video" style="display:none; width:100%; max-height:400px; border-radius:8px; margin-top:10px; background:#000;" playsinline></video>
-            <canvas id="room-canvas" style="display:none;"></canvas>
-            <button id="room-cam-snap" class="btn btn-primary w-100 mt-2" style="display:none;">Snap Photo</button>
-            <div id="room-gallery" class="mt-2" style="display:flex; gap:10px; overflow-x:auto;"></div>
-            <button id="room-upload-btn" class="btn btn-success w-100 mt-2" style="display:none;">Upload Batch</button>
-        `;
-
-        const video = document.getElementById('room-video');
-        const startBtn = document.getElementById('room-cam-start');
-        const snapBtn = document.getElementById('room-cam-snap');
-        const uploadBtn = document.getElementById('room-upload-btn');
-        const canvas = document.getElementById('room-canvas');
-        let roomStream = null;
-        let roomBatch = [];
-
-        startBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if(roomStream) {
-                roomStream.getTracks().forEach(t => t.stop()); roomStream = null;
-                video.style.display = 'none'; snapBtn.style.display = 'none';
-                startBtn.textContent = 'Open Room Camera';
-                return;
-            }
-            try {
-                roomStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                video.srcObject = roomStream; video.style.display = 'block';
-                await video.play();
-                startBtn.textContent = 'Close Camera'; snapBtn.style.display = 'block';
-            } catch(err) { alert('Camera access failed.'); }
-        });
-
-        snapBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Text Stamping
-            const cat = document.getElementById('room-category').value;
-            const ts = new Date().toLocaleString();
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
-            ctx.font = "20px Arial"; ctx.fillStyle = "white";
-            ctx.fillText(`Tech: ${username} | ${ts}`, 20, canvas.height - 45);
-            ctx.fillText(`Cat: ${cat}`, 20, canvas.height - 15);
-
-            canvas.toBlob(blob => {
-                const file = new File([blob], `room_${Date.now()}.jpg`, { type: "image/jpeg" });
-                roomBatch.push({ file: file, category: cat, lat: currentGps.lat, lon: currentGps.lon });
-                
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(blob);
-                img.style.height = '80px'; img.style.borderRadius = '6px';
-                document.getElementById('room-gallery').appendChild(img);
-                
-                uploadBtn.style.display = 'block';
-                uploadBtn.textContent = `Upload Batch (${roomBatch.length})`;
-            }, 'image/jpeg', 0.85);
-        });
-
-        uploadBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            uploadBtn.disabled = true; uploadBtn.textContent = 'Uploading...';
-            for(let item of roomBatch) {
-                let fd = new FormData();
-                fd.append('photo', item.file);
-                fd.append('category', item.category);
-                if(item.lat) fd.append('lat', item.lat);
-                if(item.lon) fd.append('lon', item.lon);
-                await fetch(uploadUrl, { method: 'POST', body: fd });
-            }
-            window.location.reload();
-        });
-    }
-
-    // ==========================================
-    // ENGINE 2: PACKOUT PHOTOS
-    // ==========================================
-    const pStartBtn = document.getElementById('packout-cam-start');
-    const pVideo = document.getElementById('packout-video');
-    const pSnapBtn = document.getElementById('packout-cam-snap');
-    const pForm = document.getElementById('packout-form');
-    const pSubmitBtn = document.getElementById('packout-submit-btn');
-    let pStream = null;
-    let pBlobs = [];
-
-    if(pStartBtn) {
-        // We reuse the hidden canvas from Room photos to save memory
-        const canvas = document.getElementById('room-canvas') || document.createElement('canvas');
-        
-        pStartBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if(pStream) {
-                pStream.getTracks().forEach(t => t.stop()); pStream = null;
-                pVideo.style.display = 'none'; pSnapBtn.style.display = 'none';
-                pStartBtn.textContent = 'Open Packout Camera';
-                return;
-            }
-            try {
-                pStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                pVideo.srcObject = pStream; pVideo.style.display = 'block';
-                await pVideo.play();
-                pStartBtn.textContent = 'Close Camera'; pSnapBtn.style.display = 'block';
-            } catch(err) { alert('Camera access failed.'); }
-        });
-
-        pSnapBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            canvas.width = pVideo.videoWidth; canvas.height = pVideo.videoHeight;
-            canvas.getContext('2d').drawImage(pVideo, 0, 0);
-            
-            canvas.toBlob(blob => {
-                pBlobs.push(blob);
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(blob);
-                img.style.height = '80px'; img.style.borderRadius = '6px';
-                document.getElementById('packout-gallery').appendChild(img);
-                pSubmitBtn.textContent = `Save Item & Upload (${pBlobs.length} Photos)`;
-            }, 'image/jpeg', 0.85);
-        });
-
-        pForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            pSubmitBtn.disabled = true; pSubmitBtn.textContent = 'Processing...';
-            
-            const fd = new FormData(pForm);
-            pBlobs.forEach((blob, i) => {
-                fd.append('packout_photo', blob, `packout_${Date.now()}_${i}.jpg`);
-            });
-
-            fetch(pForm.action, { method: 'POST', body: fd })
-            .then(() => window.location.reload())
-            .catch(() => { alert("Upload error"); pSubmitBtn.disabled = false; });
-        });
-    }
-});
-</script>
-
+    .upload-zone { border: 2px dashed var(--pcrrg-primary); border-radius: 12px; background-color: rgba(15, 32, 75, 0.03); padding: 30px 15px; text-align: center; cursor: pointer; position: relative; transition: all 0.2s; }
+    .upload-zone:active { background-color: rgba(15, 32, 75, 0.08); }
+    .upload-zone i { font-size: 3.5rem; color: var(--pcrrg-primary); margin-bottom: 10px; display: inline-block; }
+    .photo-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+</style>
 {% endblock %}
 
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h3 class="mb-0 fw-bold text-dark">{{ job.job_number }}</h3>
+    <span class="badge bg-{{ 'success' if job.status == 'closed' else 'primary' }} rounded-pill px-3 py-2 shadow-sm">{{ job.status | upper }}</span>
+</div>
+<p class="text-muted mb-2 fs-5">{{ job.title }}</p>
 
-
-<div class='cc-card mt-3'>
-  <h3>Job Map</h3>
-  <div id='job-map' data-url='{{ url_for("job_map_data", job_id=job.id) }}'></div>
+<div class="card shadow-sm border-0 mb-3 bg-white">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center mb-2">
+            <div class="bg-primary bg-opacity-10 rounded p-2 me-3"><i class="bi bi-geo-alt-fill text-primary"></i></div>
+            <div class="text-dark fw-medium small">{{ job.address or 'No address' }}</div>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="bg-primary bg-opacity-10 rounded p-2 me-3"><i class="bi bi-person-fill text-primary"></i></div>
+            <div class="text-dark fw-medium small">{{ job.client_name or 'N/A' }}</div>
+        </div>
+    </div>
 </div>
 
-<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>
-<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
-<script src='/static/js/job_map.js'></script>
+<div class="row g-2 mb-3">
+    <div class="col-6">
+        <a href="/jobs/{{ job.id }}/export/pdf" class="btn btn-outline-danger w-100 fw-bold shadow-sm bg-white"><i class="bi bi-file-pdf-fill me-1"></i> PDF Report</a>
+    </div>
+    <div class="col-6">
+        <a href="/jobs/{{ job.id }}/export/zip" class="btn btn-outline-primary w-100 fw-bold shadow-sm bg-white"><i class="bi bi-file-zip-fill me-1"></i> ZIP Claim</a>
+    </div>
+</div>
+
+<ul class="nav nav-pills mb-3" id="jobTabs" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#photos" type="button"><i class="bi bi-images me-1"></i>Photos ({{ photos|length }})</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tasks" type="button"><i class="bi bi-check2-square me-1"></i>Tasks ({{ tasks|length }})</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#packout" type="button"><i class="bi bi-box-seam me-1"></i>Packout</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#docs" type="button"><i class="bi bi-pen me-1"></i>Signatures</button></li>
+</ul>
+
+<div class="tab-content pb-5" id="jobTabsContent">
+    
+    <!-- PHOTOS TAB -->
+    <div class="tab-pane fade show active" id="photos">
+        <!-- Multi-photo uploader via JS -->
+        <div class="card shadow-sm border-0 mb-3 bg-white">
+            <div class="card-body p-3">
+                <div class="upload-zone shadow-sm mb-2" id="uploadZone">
+                    <i class="bi bi-camera-fill"></i>
+                    <h5 class="fw-bold mb-1 text-dark">Tap to Capture Evidence</h5>
+                    <p class="text-muted small mb-0">Select multiple photos or snap a new one</p>
+                    <input type="file" class="photo-input" accept="image/*" multiple capture="environment" id="multiPhotoInput">
+                </div>
+                
+                <div id="uploadProgress" class="d-none mt-3">
+                    <label class="form-label small fw-bold text-muted">Tag for Uploads</label>
+                    <select id="uploadCategory" class="form-select border-primary fw-bold mb-3 shadow-sm">
+                        <option value="Damage">Damage Documentation</option>
+                        <option value="Source">Source of Loss</option>
+                        <option value="WIP" selected>Work in Progress</option>
+                        <option value="Completion">After / Completion</option>
+                        <option value="Contents">Contents / Packout</option>
+                    </select>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-bold text-dark" id="uploadText">Preparing files...</span>
+                        <span class="badge bg-primary rounded-pill" id="uploadCount">0/0</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" id="uploadProgressBar" style="width: 0%"></div>
+                    </div>
+                    <button class="btn btn-primary w-100 mt-3 fw-bold shadow-sm" id="startUploadBtn">Start Upload</button>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="fw-bold text-muted mb-2 ps-1" style="font-size: 0.85rem; text-transform: uppercase;">Evidence Gallery</h6>
+        <div class="photo-grid mb-4">
+            {% for p in photos %}
+            <div class="photo-card shadow-sm">
+                <a href="/static/{{ p.filename.replace('\\\\', '/').replace('\\', '/') }}" target="_blank">
+                    <img src="/static/{{ p.filename.replace('\\\\', '/').replace('\\', '/') }}" alt="Evidence">
+                </a>
+                <div class="photo-meta">
+                    <div class="fw-bold text-truncate">{{ p.category or 'General' }}</div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>{{ p.uploaded_at.strftime('%m/%d %H:%M') }}</span>
+                    </div>
+                </div>
+                {% if is_admin %}
+                <form action="/jobs/{{ job.id }}/photo/{{ p.id }}/delete" method="POST" class="position-absolute top-0 end-0 p-1" style="z-index: 10;" onsubmit="return confirm('Delete this photo?');">
+                    <button type="submit" class="btn btn-sm btn-danger shadow px-2 py-0 rounded"><i class="bi bi-trash-fill fs-6"></i></button>
+                </form>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted w-100" style="grid-column: 1 / -1;">
+                <i class="bi bi-images fs-1 d-block mb-2 opacity-50"></i>
+                <p class="mb-0 fw-bold">No photos captured.</p>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- FAB for quick access -->
+        <button class="fab-btn d-lg-none" onclick="document.getElementById('multiPhotoInput').click()">
+            <i class="bi bi-camera-fill"></i>
+        </button>
+    </div>
+
+    <!-- TASKS TAB -->
+    <div class="tab-pane fade" id="tasks">
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark"><i class="bi bi-check2-all me-1 text-primary"></i> SOP Checklist</span>
+                <button class="btn btn-sm btn-primary shadow-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add</button>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for t in tasks %}
+                <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <div class="me-3">
+                        <div class="{{ 'text-decoration-line-through text-muted' if t.completed else 'text-dark fw-bold' }}">{{ t.label }}</div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <form action="/jobs/{{ job.id }}/tasks/{{ t.id }}/toggle" method="POST" class="me-2 m-0">
+                            <button type="submit" class="btn btn-sm btn-{{ 'secondary' if t.completed else 'outline-success' }} rounded-circle shadow-sm" style="width: 35px; height: 35px; padding: 0;">
+                                <i class="bi bi-check-lg fs-5"></i>
+                            </button>
+                        </form>
+                        {% if is_admin %}
+                        <form action="/jobs/{{ job.id }}/tasks/{{ t.id }}/delete" method="POST" class="m-0">
+                            <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </li>
+                {% else %}
+                <li class="list-group-item text-center text-muted py-4">No checklist items.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- PACKOUT TAB -->
+    <div class="tab-pane fade" id="packout">
+        <div class="d-grid mb-3">
+            <a href="/jobs/{{ job.id }}/packout" class="btn btn-primary fw-bold shadow-sm py-2"><i class="bi bi-box-seam me-2"></i> Manage Packout Inventory</a>
+        </div>
+        <div class="card shadow-sm border-0">
+            <ul class="list-group list-group-flush">
+                {% for item in packout_items %}
+                <li class="list-group-item py-3">
+                    <div class="d-flex justify-content-between">
+                        <strong class="text-dark">{{ item.name }}</strong>
+                        <span class="badge bg-secondary rounded-pill">Qty: {{ item.quantity }}</span>
+                    </div>
+                    <div class="text-muted small mt-1">
+                        <i class="bi bi-geo-alt"></i> {{ item.location or 'N/A' }} &bull; <i class="bi bi-activity"></i> {{ item.condition or 'N/A' }}
+                    </div>
+                </li>
+                {% else %}
+                <li class="list-group-item text-center text-muted py-5">
+                    <i class="bi bi-box2 fs-1 d-block mb-3 opacity-50"></i>
+                    No packout items recorded.
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- DOCS TAB -->
+    <div class="tab-pane fade" id="docs">
+        <div class="card shadow-sm border-0 mb-4 bg-light">
+            <div class="card-body p-3">
+                <form action="/jobs/{{ job.id }}/contracts/attach" method="POST" class="d-flex gap-2">
+                    <select name="template_id" class="form-select border-0 shadow-sm" required>
+                        <option value="">Attach New Document...</option>
+                        {% for tmpl in templates %}
+                        <option value="{{ tmpl.id }}">{{ tmpl.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary shadow-sm fw-bold px-3"><i class="bi bi-plus-lg"></i> Add</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="row g-3">
+            {% for c in contracts %}
+            <div class="col-12 col-md-6">
+                <div class="card border-0 shadow-sm h-100 {% if c.signed %}border-start border-success border-4{% else %}border-start border-warning border-4{% endif %} mb-0">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0 fw-bold text-dark">{{ c.template.name if c.template else 'Document #' ~ c.template_id }}</h6>
+                            {% if c.signed %}
+                                <span class="badge bg-success rounded-pill px-2"><i class="bi bi-check-circle-fill"></i> Signed</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark rounded-pill px-2">Pending</span>
+                            {% endif %}
+                        </div>
+                        {% if c.signed %}
+                            <small class="text-muted d-block"><i class="bi bi-person-check me-1 text-success"></i>{{ c.signer_name }} - {{ c.signed_at.strftime('%m/%d/%y %H:%M') }}</small>
+                        {% else %}
+                            <div class="d-grid mt-3">
+                                <a href="/jobs/{{ job.id }}/contracts/{{ c.id }}/sign" class="btn btn-warning fw-bold text-dark shadow-sm"><i class="bi bi-pen me-1"></i> Capture Signature</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12 text-center text-muted py-4">
+                <i class="bi bi-file-earmark-text fs-1 d-block mb-3 opacity-50"></i>
+                No authorizations attached.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white border-0">
+        <h5 class="modal-title fw-bold">Add Task</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/jobs/{{ job.id }}/tasks/add" method="POST">
+        <div class="modal-body p-4">
+            <input type="text" name="label" class="form-control form-control-lg bg-light" required placeholder="Task description...">
+        </div>
+        <div class="modal-footer border-0 p-3 pt-0">
+          <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">Save Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+    // Concurrent Photo Upload via AJAX (Requires zero backend changes!)
+    const fileInput = document.getElementById('multiPhotoInput');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const uploadText = document.getElementById('uploadText');
+    const uploadCount = document.getElementById('uploadCount');
+    const progressBar = document.getElementById('uploadProgressBar');
+    const startUploadBtn = document.getElementById('startUploadBtn');
+    const uploadCategory = document.getElementById('uploadCategory');
+    
+    let filesToUpload = [];
+    let currentLat = null;
+    let currentLon = null;
+
+    // Silently grab GPS on page load to tag the evidence photos automatically
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            currentLat = pos.coords.latitude;
+            currentLon = pos.coords.longitude;
+        }, function(err) { console.log("GPS fetch blocked or unavailable"); }, {timeout: 5000});
+    }
+
+    fileInput.addEventListener('change', function() {
+        if(this.files && this.files.length > 0) {
+            filesToUpload = Array.from(this.files);
+            uploadProgress.classList.remove('d-none');
+            uploadCount.textContent = `0/${filesToUpload.length}`;
+            progressBar.style.width = '0%';
+            uploadText.textContent = "Ready to upload";
+            startUploadBtn.style.display = 'block';
+            
+            // Auto scroll to the upload button for convenience
+            uploadProgress.scrollIntoView({behavior: "smooth", block: "center"});
+        } else {
+            uploadProgress.classList.add('d-none');
+            filesToUpload = [];
+        }
+    });
+
+    startUploadBtn.addEventListener('click', async function() {
+        if (filesToUpload.length === 0) return;
+        
+        startUploadBtn.style.display = 'none';
+        uploadText.textContent = "Uploading securely to claim...";
+        
+        let completed = 0;
+        const total = filesToUpload.length;
+        const category = uploadCategory.value;
+        const jobId = {{ job.id }};
+        
+        // Loop through each photo and fire off a request asynchronously 
+        for (let i = 0; i < filesToUpload.length; i++) {
+            const file = filesToUpload[i];
+            const formData = new FormData();
+            formData.append('photo', file);
+            formData.append('category', category);
+            if (currentLat) formData.append('lat', currentLat);
+            if (currentLon) formData.append('lon', currentLon);
+            
+            try {
+                // Post to your existing Python route without altering the python backend
+                await fetch(`/jobs/${jobId}/upload_photo`, {
+                    method: 'POST',
+                    body: formData,
+                    redirect: 'manual' 
+                });
+            } catch (e) {
+                console.error("Upload failed for file", file.name, e);
+            }
+            
+            // Update the live progress bar UI
+            completed++;
+            uploadCount.textContent = `${completed}/${total}`;
+            const percent = (completed / total) * 100;
+            progressBar.style.width = `${percent}%`;
+        }
+        
+        uploadText.textContent = "Upload Complete!";
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-success');
+        
+        // Auto-refresh to show the new Pinterest-style photo grid
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    });
+</script>
+{% endblock %}
