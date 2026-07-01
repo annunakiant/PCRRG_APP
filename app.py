@@ -1599,6 +1599,12 @@ def supermega_bootstrap():
 
     with app.app_context():
         db.create_all()
+        try:
+            from sqlalchemy import text
+            db.session.execute(text("ALTER TABLE job_contract ADD COLUMN signature_file VARCHAR(255)"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         logger.info("DB tables created/verified.")
 
         if not User.query.filter_by(username='admin').first():
