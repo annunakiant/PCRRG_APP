@@ -217,6 +217,7 @@ class JobContract(db.Model):
     signed_at = db.Column(db.DateTime)
     signer_name = db.Column(db.String(255))
     signer_email = db.Column(db.String(255))
+    signature_file = db.Column(db.String(255))
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
     template = db.relationship('ContractTemplate', backref=db.backref('contracts', lazy='dynamic'))
@@ -787,7 +788,7 @@ def export_job_companycam(job_id):
             y = y_start - row * (thumb_size + 60)
 
             # Resolve absolute path from STATIC_DIR + relative filename
-            rel = p.filename.replace("\\", "/").replace("\\", "/")
+            rel = p.filename.replace("\\", "/")
             abs_path = os.path.join(STATIC_DIR, rel)
             try:
                 pdf.drawImage(abs_path, x, y, width=thumb_size, height=thumb_size, preserveAspectRatio=True, anchor='c')
@@ -826,7 +827,7 @@ def export_job_companycam(job_id):
 
     # Add photos (full resolution)
     for p in photos:
-        rel = p.filename.replace("\\", "/").replace("\\", "/")
+        rel = p.filename.replace("\\", "/")
         abs_path = os.path.join(STATIC_DIR, rel)
         if os.path.exists(abs_path):
             with open(abs_path, "rb") as fimg:
