@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from flask import (
     Flask, render_template, redirect, url_for,
-    request, flash, jsonify, send_from_directory
+    request, flash, jsonify, send_from_directory, send_file
 )
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
@@ -788,7 +788,7 @@ def export_job_companycam(job_id):
             y = y_start - row * (thumb_size + 60)
 
             # Resolve absolute path from STATIC_DIR + relative filename
-            rel = p.filename.replace("\\", "/")
+            rel = p.filename.replace("\\\\", "/")
             abs_path = os.path.join(STATIC_DIR, rel)
             try:
                 pdf.drawImage(abs_path, x, y, width=thumb_size, height=thumb_size, preserveAspectRatio=True, anchor='c')
@@ -827,7 +827,7 @@ def export_job_companycam(job_id):
 
     # Add photos (full resolution)
     for p in photos:
-        rel = p.filename.replace("\\", "/")
+        rel = p.filename.replace("\\\\", "/")
         abs_path = os.path.join(STATIC_DIR, rel)
         if os.path.exists(abs_path):
             with open(abs_path, "rb") as fimg:
@@ -1379,7 +1379,7 @@ def view_contract_doc(contract_id):
     if not tmpl or not tmpl.filename:
         flash('No contract file available.')
         return redirect(url_for('view_job', job_id=contract.job_id))
-    return send_from_directory(CONTRACTS_FOLDER, tmpl.filename, as_attachment=False)
+    return send_from_directory, send_file(CONTRACTS_FOLDER, tmpl.filename, as_attachment=False)
 
 
 @app.route('/contracts/templates', methods=['GET', 'POST'])
@@ -1584,7 +1584,7 @@ def archive_job(job_id):
 # -------------------------------------------------------------------------
 @app.route('/static/uploads/<path:filename>')
 def uploaded_file(filename):
-    return send_from_directory(UPLOAD_ROOT, filename)
+    return send_from_directory, send_file(UPLOAD_ROOT, filename)
 
 # -------------------------------------------------------------------------
 # SUPER-MEGA BOOTSTRAP
@@ -1673,7 +1673,7 @@ def export_job_zip(job_id):
 
     build_zip_package(job, path)
 
-    return send_from_directory(export_dir, filename, as_attachment=True)
+    return send_from_directory, send_file(export_dir, filename, as_attachment=True)
 
 @app.route('/jobs/<int:job_id>/export/pdf')
 @login_required
@@ -1689,7 +1689,7 @@ def export_job_pdf(job_id):
 
     build_full_pdf(job, path)
 
-    return send_from_directory(export_dir, filename, as_attachment=True)
+    return send_from_directory, send_file(export_dir, filename, as_attachment=True)
 
 
 @app.route('/jobs/<int:job_id>/report.pdf')
@@ -1702,7 +1702,7 @@ def job_report_pdf(job_id):
     filename = f"job_{job.id}_report.pdf"
     path = os.path.join(reports_dir, filename)
     generate_job_pdf(job, path)
-    return send_from_directory(reports_dir, filename, as_attachment=True)
+    return send_from_directory, send_file(reports_dir, filename, as_attachment=True)
 
 
 @app.route('/jobs/<int:job_id>/attach-checklist', methods=['POST'])
@@ -1959,20 +1959,28 @@ def admin_users_assign_roles(user_id):
 @app.route('/jobs/<int:job_id>/export/companycam_v2', methods=['POST'])
 @login_required
 def export_job_companycam_v2(job_id):
-    import io, os, csv, zipfile
+    import io, os, csv, zipfile, json as _json
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import landscape, letter
+    from collections import defaultdict
+    from flask import send_file
 
     job = Job.query.get_or_404(job_id)
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     selected_ids = data.get("photos") or []
     layout = int(data.get("layout") or 4)
-    metadata = data.get("metadata") or []
+    metadata = data.get("metadata") or ["date", "location", "tags"]
 
     if selected_ids:
         photos = JobPhoto.query.filter(JobPhoto.id.in_(selected_ids)).order_by(JobPhoto.uploaded_at.asc()).all()
     else:
         photos = job.photos.order_by(JobPhoto.uploaded_at.asc()).all()
+
+    # Automatically group photos by your UI Categories for the PDF
+    categories = defaultdict(list)
+    for p in photos:
+        cat = p.category or "Uncategorized Evidence"
+        categories[cat].append(p)
 
     packout_items = job.packout_items.order_by(PackoutItem.id.asc()).all()
     contracts = job.contracts.order_by(JobContract.id.asc()).all()
@@ -1980,145 +1988,150 @@ def export_job_companycam_v2(job_id):
 
     export_root = os.path.join(app.config['ARCHIVE_FOLDER'], 'companycam_v2')
     os.makedirs(export_root, exist_ok=True)
-    pdf_filename = f"job_{job.id}_companycam_v2.pdf"
+    pdf_filename = f"job_{job.job_number}_professional_report.pdf"
     pdf_path = os.path.join(export_root, pdf_filename)
 
     pdf = canvas.Canvas(pdf_path, pagesize=landscape(letter))
+    page_w, page_h = landscape(letter)
 
     try:
         logo_path = os.path.join(STATIC_DIR, "logo.png")
-        pdf.drawImage(logo_path, 40, 450, width=120, height=120, preserveAspectRatio=True)
+        if os.path.exists(logo_path):
+            pdf.drawImage(logo_path, 40, page_h - 150, width=120, height=120, preserveAspectRatio=True)
     except:
         pass
 
     pdf.setFont("Helvetica-Bold", 24)
-    pdf.drawString(180, 520, "Professional Cleaning Restoration & Rehab Services Group")
-
+    pdf.drawString(180, page_h - 70, "Professional Cleaning Restoration & Rehab Services Group")
     pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(180, 495, f"Job Report — {job.job_number}")
+    pdf.drawString(180, page_h - 95, f"Job & Evidence Report — {job.job_number}")
 
     pdf.setFont("Helvetica", 12)
-    pdf.drawString(50, 450, f"Title: {job.title}")
-    pdf.drawString(50, 430, f"Client: {job.client_name or ''}")
-    pdf.drawString(50, 410, f"Address: {job.address or ''}")
-    pdf.drawString(50, 390, f"Service: {job.service_type or ''}")
-    pdf.drawString(50, 370, f"Status: {job.status}")
-    pdf.drawString(50, 350, f"Created: {job.created_at.strftime('%Y-%m-%d %H:%M')}")
+    pdf.drawString(50, page_h - 160, f"Title: {job.title}")
+    pdf.drawString(50, page_h - 180, f"Client: {job.client_name or ''}")
+    pdf.drawString(50, page_h - 200, f"Address: {job.address or ''}")
+    pdf.drawString(50, page_h - 220, f"Service: {job.service_type or ''}")
+    pdf.drawString(50, page_h - 240, f"Status: {job.status.upper()}")
+    pdf.drawString(50, page_h - 260, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
     pdf.showPage()
 
     pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(50, 550, "Task Summary")
-    pdf.setFont("Helvetica", 11)
-    y = 520
-    for t in tasks:
-        status = "Done" if t.completed else "Pending"
-        pdf.drawString(50, y, f"{t.label} — {status}")
-        y -= 18
-        if y < 80:
-            pdf.showPage()
-            pdf.setFont("Helvetica-Bold", 18)
-            pdf.drawString(50, 550, "Task Summary (cont.)")
-            pdf.setFont("Helvetica", 11)
-            y = 520
+    pdf.drawString(50, page_h - 60, "Job Summary Details")
+    y = page_h - 90
+    
+    if tasks:
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(50, y, "Task Checklists:")
+        y -= 20
+        pdf.setFont("Helvetica", 11)
+        for t in tasks:
+            status = "Completed" if t.completed else "Pending"
+            pdf.drawString(60, y, f"- {t.label} ( {status} )")
+            y -= 18
+            if y < 80:
+                pdf.showPage()
+                y = page_h - 60
+        y -= 10
+        
+    if packout_items:
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(50, y, "Packout Inventory:")
+        y -= 20
+        pdf.setFont("Helvetica", 11)
+        for item in packout_items:
+            pdf.drawString(60, y, f"- {item.quantity}x {item.name} @ {item.location or ''} (Cond: {item.condition or ''})")
+            y -= 18
+            if y < 80:
+                pdf.showPage()
+                y = page_h - 60
+        y -= 10
+
+    if contracts:
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(50, y, "Contracts & Work Authorizations:")
+        y -= 20
+        pdf.setFont("Helvetica", 11)
+        for c in contracts:
+            status = "SIGNED" if c.signed else "PENDING"
+            pdf.drawString(60, y, f"- Document #{c.template_id} — {status} by {c.signer_name or 'N/A'}")
+            y -= 18
+            if y < 80:
+                pdf.showPage()
+                y = page_h - 60
+
     pdf.showPage()
 
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(50, 550, "Packout Summary")
-    pdf.setFont("Helvetica", 11)
-    y = 520
-    for item in packout_items:
-        pdf.drawString(50, y, f"{item.name} x{item.quantity} @ {item.location or ''} ({item.condition or ''})")
-        y -= 18
-        if y < 80:
-            pdf.showPage()
+    # --- PERFECT 8-GRID LAYOUT (4 Columns x 2 Rows) ---
+    per_row = 4
+    per_page = 8
+    thumb_w = 165
+    thumb_h = 165
+    padding_x = 15
+    padding_y = 50
+    start_x = 35
+    start_y = page_h - 100
+
+    for cat, cat_photos in categories.items():
+        index = 0
+        while index < len(cat_photos):
+            chunk = cat_photos[index:index + per_page]
             pdf.setFont("Helvetica-Bold", 18)
-            pdf.drawString(50, 550, "Packout Summary (cont.)")
-            pdf.setFont("Helvetica", 11)
-            y = 520
-    pdf.showPage()
+            pdf.drawString(start_x, page_h - 40, f"Evidence Category: {cat}")
 
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(50, 550, "Contracts Summary")
-    pdf.setFont("Helvetica", 11)
-    y = 520
-    for c in contracts:
-        status = "Signed" if c.signed else "Pending"
-        pdf.drawString(50, y, f"Template #{c.template_id} — {status} — {c.signer_name or ''}")
-        y -= 18
-        if y < 80:
+            for i, p in enumerate(chunk):
+                row = i // per_row
+                col = i % per_row
+                x = start_x + col * (thumb_w + padding_x)
+                y = start_y - row * (thumb_h + padding_y) - thumb_h
+
+                rel = p.filename.replace("\\", "/").replace("\", "/")
+                abs_path = os.path.join(STATIC_DIR, rel.lstrip("/"))
+                
+                try:
+                    pdf.drawImage(abs_path, x, y, width=thumb_w, height=thumb_h, preserveAspectRatio=True, anchor='c')
+                except:
+                    pdf.setStrokeColorRGB(0.8,0.8,0.8)
+                    pdf.rect(x, y, thumb_w, thumb_h)
+                    pdf.setFont("Helvetica", 10)
+                    pdf.drawString(x + 20, y + thumb_h/2, "[Image missing]")
+
+                meta_y = y - 12
+                pdf.setFont("Helvetica", 8)
+                meta = []
+                if "date" in metadata and p.uploaded_at:
+                    meta.append(p.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+                if p.latitude and p.longitude:
+                    meta.append(f"GPS: {round(p.latitude,5)}, {round(p.longitude,5)}")
+                if "location" in metadata and p.location_label:
+                    meta.append(p.location_label[:20])
+                if meta:
+                    pdf.drawString(x, meta_y, " | ".join(meta)[:45])
+                    
             pdf.showPage()
-            pdf.setFont("Helvetica-Bold", 18)
-            pdf.drawString(50, 550, "Contracts Summary (cont.)")
-            pdf.setFont("Helvetica", 11)
-            y = 520
-    pdf.showPage()
-
-    per_row = max(2, min(layout, 4))
-    per_page = per_row * 2
-    thumb_w = 260
-    thumb_h = 180
-    padding_x = 40
-    padding_y = 40
-
-    index = 0
-    while index < len(photos):
-        chunk = photos[index:index + per_page]
-        pdf.setFont("Helvetica-Bold", 18)
-        pdf.drawString(50, 550, "Photo Evidence")
-
-        for i, p in enumerate(chunk):
-            row = i // per_row
-            col = i % per_row
-            x = 50 + col * (thumb_w + padding_x)
-            y = 500 - row * (thumb_h + padding_y)
-
-            rel = p.filename.replace("\\", "/")
-            abs_path = os.path.join(STATIC_DIR, rel)
-            try:
-                pdf.drawImage(abs_path, x, y, width=thumb_w, height=thumb_h, preserveAspectRatio=True)
-            except:
-                pdf.setFont("Helvetica", 10)
-                pdf.drawString(x, y + thumb_h / 2, "[Image missing]")
-
-            meta_y = y - 14
-            pdf.setFont("Helvetica", 10)
-            meta = []
-            if "numbers" in metadata:
-                meta.append(f"#{p.id}")
-            if "captured_by" in metadata and p.user_id:
-                meta.append(f"Tech {p.user_id}")
-            if "location" in metadata and p.location_label:
-                meta.append(p.location_label)
-            if "date" in metadata and p.uploaded_at:
-                meta.append(p.uploaded_at.strftime("%Y-%m-%d %H:%M"))
-            if "tags" in metadata and p.category:
-                meta.append(p.category)
-            if meta:
-                pdf.drawString(x, meta_y, " | ".join(meta))
-
-        pdf.showPage()
-        index += per_page
+            index += per_page
 
     pdf.save()
 
+    # --- ZIP ASSEMBLY ---
     zip_buffer = io.BytesIO()
     z = zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED)
-
     with open(pdf_path, "rb") as fpdf:
         z.writestr(pdf_filename, fpdf.read())
-
+    
+    # Sort Photos into Category Folders in the ZIP!
     for p in photos:
-        rel = p.filename.replace("\\", "/")
+        rel = p.filename.replace("\\", "/").replace("\", "/").lstrip("/")
         abs_path = os.path.join(STATIC_DIR, rel)
         if os.path.exists(abs_path):
-            z.write(abs_path, arcname=os.path.join("photos", os.path.basename(abs_path)))
+            cat_folder = p.category or "General"
+            z.write(abs_path, arcname=os.path.join("Evidence_Photos", cat_folder, os.path.basename(abs_path)))
 
     csv_buffer = io.StringIO()
     writer = csv.writer(csv_buffer)
     writer.writerow(["Name", "Quantity", "Location", "Condition", "Notes"])
     for item in packout_items:
         writer.writerow([item.name, item.quantity, item.location or "", item.condition or "", item.notes or ""])
-    z.writestr(f"job_{job.id}_packout.csv", csv_buffer.getvalue())
+    z.writestr(f"job_{job.job_number}_packout_manifest.csv", csv_buffer.getvalue())
 
     contracts_payload = []
     for c in contracts:
@@ -2128,16 +2141,12 @@ def export_job_companycam_v2(job_id):
             "signed_at": c.signed_at.isoformat() if c.signed_at else None,
             "signer_name": c.signer_name,
             "signer_email": c.signer_email,
+            "latitude": c.latitude,
+            "longitude": c.longitude,
         })
-    z.writestr(f"job_{job.id}_contracts.json", json.dumps(contracts_payload, indent=2))
+    z.writestr(f"job_{job.job_number}_contracts.json", _json.dumps(contracts_payload, indent=2))
 
     z.close()
     zip_buffer.seek(0)
-
-    zip_name = f"job_{job.id}_companycam_v2.zip"
-    return send_file(
-        zip_buffer,
-        mimetype="application/zip",
-        as_attachment=True,
-        download_name=zip_name
-    )
+    zip_name = f"Job_{job.job_number}_Professional_Report_Package.zip"
+    return send_file(zip_buffer, mimetype="application/zip", as_attachment=True, download_name=zip_name)
