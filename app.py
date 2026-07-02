@@ -2084,7 +2084,7 @@ def export_job_companycam_v2(job_id):
                 x = start_x + col * (thumb_w + padding_x)
                 y = start_y - row * (thumb_h + padding_y) - thumb_h
 
-                rel = p.filename.replace("\\", "/").replace("\", "/")
+                rel = p.filename.replace("\", "/").replace("\", "/")
                 abs_path = os.path.join(STATIC_DIR, rel.lstrip("/"))
                 
                 try:
@@ -2120,7 +2120,7 @@ def export_job_companycam_v2(job_id):
     
     # Sort Photos into Category Folders in the ZIP!
     for p in photos:
-        rel = p.filename.replace("\\", "/").replace("\", "/").lstrip("/")
+        rel = p.filename.replace("\", "/").replace("\", "/").lstrip("/")
         abs_path = os.path.join(STATIC_DIR, rel)
         if os.path.exists(abs_path):
             cat_folder = p.category or "General"
