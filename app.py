@@ -1663,34 +1663,20 @@ if __name__ == '__main__':
 @login_required
 def export_job_zip(job_id):
     job = Job.query.get_or_404(job_id)
-    from export_zip import build_zip_package
-
-    export_dir = os.path.join(app.config['ARCHIVE_FOLDER'], 'exports')
-    os.makedirs(export_dir, exist_ok=True)
-
-    filename = f"job_{job.id}_package.zip"
-    path = os.path.join(export_dir, filename)
-
-    build_zip_package(job, path)
-
-    return send_from_directory, send_file(export_dir, filename, as_attachment=True)
+    import report_engine
+    return report_engine.generate_zip_package(
+        job, JobPhoto, PackoutItem, JobContract, JobTask,
+        STATIC_DIR, app.config['ARCHIVE_FOLDER'], send_from_directory
+    )
 
 @app.route('/jobs/<int:job_id>/export/pdf')
 @login_required
 def export_job_pdf(job_id):
     job = Job.query.get_or_404(job_id)
-    from export_pdf import build_full_pdf
-
-    export_dir = os.path.join(app.config['ARCHIVE_FOLDER'], 'exports')
-    os.makedirs(export_dir, exist_ok=True)
-
-    filename = f"job_{job.id}_full_report.pdf"
-    path = os.path.join(export_dir, filename)
-
-    build_full_pdf(job, path)
-
-    return send_from_directory, send_file(export_dir, filename, as_attachment=True)
-
+    import report_engine
+    return report_engine.generate_pdf_report(
+        job, JobPhoto, STATIC_DIR, app.config['ARCHIVE_FOLDER'], send_from_directory
+    )
 
 @app.route('/jobs/<int:job_id>/report.pdf')
 @login_required
